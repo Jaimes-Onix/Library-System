@@ -2,6 +2,7 @@
 import React, { useState, useRef } from 'react';
 import { X, Camera, Save, User, Loader2, Check } from 'lucide-react';
 import { UserProfile, Theme } from '../types';
+import { supabase } from '../lib/supabase';
 
 interface AccountSettingsModalProps {
   isOpen: boolean;
@@ -23,10 +24,8 @@ const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
-  const isDark = theme === 'dark';
 
-  if (!isOpen) return null;
+  const isDark = theme === 'dark';
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -43,28 +42,53 @@ const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
     return n.split(' ').map(p => p[0]).join('').toUpperCase().slice(0, 2);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (!name.trim()) return alert("Name cannot be empty");
+
     setIsSaving(true);
-    // Simulate API call
-    setTimeout(() => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Not authenticated");
+
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({
+          name: name.trim(),
+        })
+        .eq('id', user.id)
+        .select();
+
+      if (error) {
+        console.error("Supabase Profile Update Error:", error);
+        throw error;
+      }
+
+      console.log("Profile updated successfully:", data);
+
       onSave({
         ...userProfile,
-        name: name,
+        name: name.trim(),
         photoUrl: photoUrl,
-        initials: getInitials(name)
+        initials: getInitials(name.trim())
       });
-      setIsSaving(false);
       setShowSuccess(true);
       setTimeout(() => {
         setShowSuccess(false);
         onClose();
-      }, 1000);
-    }, 800);
+      }, 800);
+    } catch (err: any) {
+      console.error("Profile Save Failure:", err);
+      alert(`Save failed: ${err.message || "Unknown error"}`);
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-md animate-in fade-in duration-300">
-      <div 
+      <div
         className={`w-full max-w-md overflow-hidden rounded-[40px] border shadow-2xl transition-all duration-500 animate-in zoom-in slide-in-from-bottom-8
           ${isDark ? 'bg-zinc-900/90 border-white/10' : 'bg-white/90 border-white/40'}`}
       >
@@ -73,7 +97,7 @@ const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
           <h2 className={`text-xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
             Account Settings
           </h2>
-          <button 
+          <button
             onClick={onClose}
             className={`p-2 rounded-full transition-colors ${isDark ? 'text-gray-500 hover:bg-white/5 hover:text-white' : 'text-gray-400 hover:bg-gray-100 hover:text-gray-900'}`}
           >
@@ -95,7 +119,7 @@ const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
                     {getInitials(name)}
                   </div>
                 )}
-                
+
                 {/* Overlay on hover */}
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white">
                   <Camera size={24} className="mb-1" />
@@ -105,12 +129,12 @@ const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
               <div className="absolute -bottom-2 -right-2 bg-blue-600 text-white p-2.5 rounded-2xl shadow-xl">
                 <Camera size={18} />
               </div>
-              <input 
-                type="file" 
-                ref={fileInputRef} 
-                onChange={handleFileChange} 
-                className="hidden" 
-                accept="image/*" 
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileChange}
+                className="hidden"
+                accept="image/*"
               />
             </div>
             <p className={`mt-6 text-[10px] font-black uppercase tracking-[0.2em] ${isDark ? 'text-zinc-500' : 'text-gray-400'}`}>
@@ -132,8 +156,8 @@ const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Your Name"
                   className={`w-full pl-12 pr-4 py-4 rounded-[20px] outline-none transition-all text-sm font-semibold
-                    ${isDark 
-                      ? 'bg-white/5 border border-white/5 text-white focus:bg-white/10 focus:ring-4 focus:ring-blue-500/10' 
+                    ${isDark
+                      ? 'bg-white/5 border border-white/5 text-white focus:bg-white/10 focus:ring-4 focus:ring-blue-500/10'
                       : 'bg-gray-100 border border-transparent text-gray-900 focus:bg-white focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500'}`}
                 />
               </div>
@@ -161,13 +185,13 @@ const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
           >
             Cancel
           </button>
-          
+
           <button
             onClick={handleSave}
             disabled={isSaving || showSuccess}
             className={`flex-[2] flex items-center justify-center gap-3 py-4 rounded-[20px] font-bold text-sm transition-all active:scale-95 shadow-xl disabled:opacity-70
-              ${showSuccess 
-                ? 'bg-green-500 text-white shadow-green-900/20' 
+              ${showSuccess
+                ? 'bg-green-500 text-white shadow-green-900/20'
                 : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-900/40'}`}
           >
             {isSaving ? (

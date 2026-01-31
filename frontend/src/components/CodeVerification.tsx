@@ -7,8 +7,7 @@ import { supabase } from '../lib/supabase';
 interface CodeVerificationProps {
     theme: Theme;
     email: string;
-    verificationToken: string;
-    onVerified: () => void;
+    onVerifyCode: (code: string) => Promise<void>;
     onCancel: () => void;
 }
 
@@ -17,8 +16,7 @@ export type VerificationStatus = 'pending' | 'verified' | 'expired' | 'error';
 const CodeVerification: React.FC<CodeVerificationProps> = ({
     theme,
     email,
-    verificationToken,
-    onVerified,
+    onVerifyCode,
     onCancel
 }) => {
     const isDark = theme === 'dark';
@@ -75,41 +73,13 @@ const CodeVerification: React.FC<CodeVerificationProps> = ({
         setError('');
 
         try {
-            // Check if the code matches the token in database
-            const { data, error } = await supabase
-                .from('verification_tokens')
-                .select('*')
-                .eq('token', verificationToken)
-                .eq('status', 'pending')
-                .single();
-
-            if (error || !data) {
-                setError('Verification code expired or invalid');
-                setIsVerifying(false);
-                return;
-            }
-
-            // In a real implementation, you'd store the 6-digit code separately
-            // For now, we'll use the last 6 characters of the token
-            const storedCode = verificationToken.slice(-6);
-
-            if (enteredCode === storedCode) {
-                setStatus('verified');
-
-                // Update token status
-                await supabase
-                    .from('verification_tokens')
-                    .update({ status: 'verified' })
-                    .eq('token', verificationToken);
-
-                setTimeout(onVerified, 1500);
-            } else {
-                setError('Invalid verification code. Please try again.');
-                setCode(['', '', '', '', '', '']);
-                document.getElementById('code-0')?.focus();
-            }
-        } catch (err) {
-            setError('Verification failed. Please try again.');
+            await onVerifyCode(enteredCode);
+            setStatus('verified');
+            // onVerified removed, handled by parent via promise success
+        } catch (err: any) {
+            setError(err.message || 'Verification failed. Please try again.');
+            setCode(['', '', '', '', '', '']);
+            document.getElementById('code-0')?.focus();
         } finally {
             setIsVerifying(false);
         }
@@ -150,8 +120,8 @@ const CodeVerification: React.FC<CodeVerificationProps> = ({
                                         onChange={(e) => handleCodeChange(index, e.target.value)}
                                         onKeyDown={(e) => handleKeyDown(index, e)}
                                         className={`w-12 h-14 text-center text-2xl font-bold rounded-xl border-2 transition-all ${isDark
-                                                ? 'bg-zinc-900 border-zinc-700 text-white focus:border-amber-500'
-                                                : 'bg-gray-50 border-gray-300 text-gray-900 focus:border-amber-500'
+                                            ? 'bg-zinc-900 border-zinc-700 text-white focus:border-amber-500'
+                                            : 'bg-gray-50 border-gray-300 text-gray-900 focus:border-amber-500'
                                             } focus:outline-none focus:ring-2 focus:ring-amber-500/20`}
                                         disabled={isVerifying}
                                     />

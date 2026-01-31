@@ -10,7 +10,7 @@ interface AuthProps {
 
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../context/AuthContext';
-import { sendVerificationEmail } from '../services/emailService';
+
 
 const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
   const { user } = useAuth();
@@ -28,119 +28,102 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
+  /* New Handle Submit using Supabase Native Auth */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
       let email = formData.email || formData.user;
-
-      // Handle "Admin" shortcut
-      if (email.toLowerCase() === 'admin') {
-        email = 'admin@flipbook.com';
-      }
+      if (email.toLowerCase() === 'admin') email = 'admin@flipbook.com';
 
       if (mode === 'signin') {
-        const { data, error } = await supabase.auth.signInWithPassword({
+        const { error } = await supabase.auth.signInWithPassword({
           email,
           password: formData.password,
         });
 
-        if (error) {
-          // Show specific error message
-          if (error.message.includes('Invalid login credentials')) {
-            showErrorToast('Invalid email or password. Please try again.');
-          } else {
-            showErrorToast(error.message);
-          }
-          setIsLoading(false);
-          return;
-        }
-
-        // Success - auth state change will be picked up by AuthContext
+        if (error) throw error;
         showSuccessToast('Welcome back! Signing you in...');
       } else {
-        // Generate 6-digit verification code
-        const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
-        const verificationToken = crypto.randomUUID() + verificationCode; // Append code to token
-        const expiresAt = Date.now() + 5 * 60 * 1000; // 5 minutes
-
-        // Store verification token in Supabase
-        const { error: tokenError } = await supabase
-          .from('verification_tokens')
-          .insert({
-            email,
-            token: verificationToken,
-            expires_at: new Date(expiresAt).toISOString(),
-            status: 'pending'
-          });
-
-        if (tokenError) throw tokenError;
-
-        // Send verification email with 6-digit code
-        try {
-          await sendVerificationEmail({
-            email,
-            verificationToken
-          });
-          showInfoToast(`Verification code sent to ${email}`);
-        } catch (emailError: any) {
-          console.warn('Failed to send email (likely due to missing configuration), falling back to manual code display:', emailError);
-          // This is a crucial fallback for development or when email service is down
-          // We show the code directly to the user so they can still proceed
-          showInfoToast(`Service Mode: Your code is ${verificationCode}`);
-
-          // You might want to show a more persistent UI element here in a real app
-          // instead of just a toast that might disappear
-        }
-
-        // Set QR verification state (which triggers the code entry UI)
-        setQrVerification({
+        // Sign Up with Supabase (triggers verification email)
+        const { data, error } = await supabase.auth.signUp({
           email,
-          token: verificationToken,
-          status: 'pending',
-          expiresAt
+          password: formData.password,
+          options: {
+            data: {
+              full_name: formData.name,
+            }
+          }
         });
+
+        if (error) throw error;
+
+        // If signup is successful, Supabase sends the email.
+        // We show the verification UI to let the user enter the code.
+        // Identify if the user is new or existing based on response
+        if (data.user && !data.session) {
+          showInfoToast(`Verification code sent to ${email}`);
+          setQrVerification({
+            email,
+            token: '', // No token needed for local state, Supabase handles it
+            status: 'pending',
+            expiresAt: Date.now() + 5 * 60 * 1000
+          });
+        } else if (data.session) {
+          showSuccessToast('Account created successfully!');
+          onAuthSuccess({
+            id: data.user!.id,
+            email: data.user!.email!,
+            role: 'user',
+            name: formData.name,
+            initials: getInitials(formData.name),
+            created_at: new Date().toISOString()
+          });
+        }
       }
     } catch (err: any) {
       console.error('Authentication Error:', err);
-      showErrorToast(err.message || "Authentication failed. Please try again.");
+      showErrorToast(err.message || "Authentication failed.");
+    } finally {
       setIsLoading(false);
     }
   };
 
-  const handleQRVerified = async () => {
+  const handleVerifyOtp = async (code: string) => {
     if (!qrVerification) return;
 
     try {
-      // Create the user account
-      const { data, error } = await supabase.auth.signUp({
+      const { data, error } = await supabase.auth.verifyOtp({
         email: qrVerification.email,
-        password: formData.password,
+        token: code,
+        type: 'signup'
       });
 
       if (error) throw error;
 
-      if (data.user) {
+      if (data.session && data.user) {
+        // Create profile if it doesn't exist (Trigger might handle this, but safe to do here)
         const role = qrVerification.email === 'admin@flipbook.com' ? 'admin' : 'user';
 
-        await supabase
+        const { error: profileError } = await supabase
           .from('profiles')
-          .insert({
+          .upsert({
             id: data.user.id,
             email: qrVerification.email,
             role: role,
             created_at: new Date().toISOString()
           });
 
-        // Update verification token status
-        await supabase
-          .from('verification_tokens')
-          .update({ status: 'verified' })
-          .eq('token', qrVerification.token);
+        if (profileError) console.warn("Profile creation warning:", profileError);
+
+        showSuccessToast('Email verified successfully!');
+        setQrVerification(null);
+        // AuthContext should pick up the session change
       }
     } catch (err: any) {
-      console.error('Verification error:', err);
+      console.error("Verification failed:", err);
+      throw err; // Propagate to CodeVerification to show error
     }
   };
 
@@ -149,8 +132,7 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
       <CodeVerification
         theme="dark"
         email={qrVerification.email}
-        verificationToken={qrVerification.token}
-        onVerified={handleQRVerified}
+        onVerifyCode={handleVerifyOtp}
         onCancel={() => setQrVerification(null)}
       />
     );

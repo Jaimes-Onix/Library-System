@@ -43,9 +43,13 @@ export interface BookRef {
 }
 
 export interface UserProfile {
+  id: string;
+  email: string;
   name: string;
-  user: string;
-  initials: string;
+  role: string;
+  created_at: string;
+  user?: string; // Legacy field, optional now
+  initials?: string; // Legacy field, optional now
   photoUrl?: string;
 }
 

@@ -1,10 +1,10 @@
 
 import React from 'react';
-import { 
-  Library, 
-  Heart, 
-  Settings, 
-  LogOut, 
+import {
+  Library,
+  Heart,
+  Settings,
+  LogOut,
   Briefcase,
   GraduationCap,
   User,
@@ -24,15 +24,17 @@ interface SidebarProps {
   onOpenSettings: () => void;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ 
+const Sidebar: React.FC<SidebarProps> = ({
   theme,
-  userProfile, 
-  onLogout, 
-  activeFilter, 
-  onFilterChange, 
+  userProfile,
+  onLogout,
+  activeFilter,
+  onFilterChange,
   onToggleTheme,
   onOpenSettings
 }) => {
+  if (!userProfile) return null;
+
   const isDark = theme === 'dark';
 
   // "Opposite Color" Logic for High Visual Clarity:
@@ -42,7 +44,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   const sidebarText = isDark ? 'text-gray-900' : 'text-white';
   const sidebarBorder = isDark ? 'border-gray-200' : 'border-white/5';
   const sidebarItemHover = isDark ? 'hover:bg-gray-200' : 'hover:bg-white/5';
-  
+
   // Highlighted item logic
   const sidebarItemActive = isDark ? 'bg-black text-white' : 'bg-white text-black';
   const sidebarSecondaryText = isDark ? 'text-gray-400' : 'text-zinc-500';
@@ -84,8 +86,8 @@ const Sidebar: React.FC<SidebarProps> = ({
               key={item.id}
               onClick={() => onFilterChange(item.id)}
               className={`w-full flex items-center gap-4 px-6 py-5 rounded-[20px] transition-all text-base font-bold
-                ${activeFilter === item.id 
-                  ? `${sidebarItemActive} shadow-xl translate-x-1` 
+                ${activeFilter === item.id
+                  ? `${sidebarItemActive} shadow-xl translate-x-1`
                   : `${sidebarText} ${sidebarItemHover}`
                 }
               `}
@@ -102,12 +104,12 @@ const Sidebar: React.FC<SidebarProps> = ({
         <p className={`px-5 text-xs font-black uppercase tracking-[0.2em] mb-5 ${sidebarSecondaryText}`}>Categories</p>
         <div className="space-y-2">
           {categories.map((cat) => (
-            <button 
+            <button
               key={cat.id}
               onClick={() => onFilterChange(cat.id)}
               className={`w-full flex items-center gap-4 px-6 py-4 rounded-xl text-sm font-bold transition-all
-                ${activeFilter === cat.id 
-                  ? `${isDark ? 'bg-gray-200 text-black shadow-lg' : 'bg-white/10 text-white shadow-lg'} translate-x-1` 
+                ${activeFilter === cat.id
+                  ? `${isDark ? 'bg-gray-200 text-black shadow-lg' : 'bg-white/10 text-white shadow-lg'} translate-x-1`
                   : `${sidebarSecondaryText} ${sidebarItemHover}`
                 }`}
             >
@@ -135,7 +137,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           <Settings size={22} />
           Account Settings
         </button>
-        
+
         <button
           onClick={onLogout}
           className={`w-full flex items-center gap-4 px-6 py-5 rounded-[20px] text-base font-black text-red-500 transition-all active:scale-95 ${isDark ? 'hover:bg-red-50' : 'hover:bg-red-500/10'}`}

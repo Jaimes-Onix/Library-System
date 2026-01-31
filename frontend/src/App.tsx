@@ -126,39 +126,20 @@ const FlipBookAppContent: React.FC = () => {
       const { data, error } = await supabase
         .from('books')
         .select('*')
-        .eq('user_id', user?.id);
+        .eq('user_id', user?.id)
+        .order('created_at', { ascending: false });
 
       if (data) {
-        // Transform Supabase data to LibraryBook
-        const loadedBooks: LibraryBook[] = await Promise.all(
-          data.map(async (b: any) => {
-            // Load PDF document from URL (we might need to download it first or stream it)
-            // For now, assuming direct URL access works for pdfjs if CORS is set up.
-            // Since Storage is private, we need a signed URL.
-            const { data: signedData } = await supabase.storage.from('books').createSignedUrl(b.file_url, 3600);
-
-            let doc = null;
-            if (signedData?.signedUrl) {
-              try {
-                const response = await fetch(signedData.signedUrl);
-                const blob = await response.blob();
-                const file = new File([blob], b.title, { type: 'application/pdf' });
-                doc = await getDocument(file);
-              } catch (e) { console.error("Error loading PDF", e); }
-            }
-
-            return {
-              id: b.id,
-              name: b.title,
-              doc, // This might be null if load fails, need to handle
-              coverUrl: b.cover_url,
-              totalPages: doc?.numPages || 0,
-              isFavorite: false, // Need to add to schema or local
-              category: 'Uncategorized' // Need to add to schema
-            };
-          })
-        );
-        setBooks(loadedBooks.filter(b => b.doc !== null)); // Only show valid books for now
+        const loadedBooks: LibraryBook[] = data.map((b: any) => ({
+          id: b.id,
+          name: b.title,
+          doc: null, // Load only when opened
+          coverUrl: b.cover_url,
+          totalPages: b.total_pages || 0,
+          isFavorite: false,
+          category: 'Uncategorized'
+        }));
+        setBooks(loadedBooks);
       }
     } catch (err) {
       console.error(err);
@@ -240,7 +221,8 @@ const FlipBookAppContent: React.FC = () => {
           user_id: user?.id,
           title: file.name,
           file_url: filePath,
-          cover_url: publicCoverUrl
+          cover_url: publicCoverUrl,
+          total_pages: doc?.numPages || 0
         });
 
         if (dbError) throw dbError;
@@ -302,17 +284,55 @@ const FlipBookAppContent: React.FC = () => {
   }, [books, libraryFilter]);
 
   useEffect(() => {
-    if (!user && ['library', 'upload', 'reader'].includes(view)) {
-      setView('landing');
-    }
-  }, [user, view]);
+    const loadSelectedBookDoc = async () => {
+      if (view === 'reader' && selectedBook && !selectedBook.doc) {
+        setLoadingStatus("Opening Masterpiece...");
+        try {
+          // Get the record from DB to get file_url
+          const { data: b } = await supabase.from('books').select('file_url').eq('id', selectedBook.id).single();
+          if (b?.file_url) {
+            const { data: signedData } = await supabase.storage.from('books').createSignedUrl(b.file_url, 3600);
+            if (signedData?.signedUrl) {
+              const response = await fetch(signedData.signedUrl);
+              const blob = await response.blob();
+              const file = new File([blob], selectedBook.name, { type: 'application/pdf' });
+              const doc = await getDocument(file);
+              setSelectedBook(prev => prev ? { ...prev, doc } : null);
+            }
+          }
+        } catch (e) {
+          console.error("Error loading PDF", e);
+        } finally {
+          setLoadingStatus(null);
+        }
+      }
+    };
+    loadSelectedBookDoc();
+  }, [view, selectedBook?.id]);
 
   if (isShowingAuth) return <Auth onAuthSuccess={() => setIsShowingAuth(false)} />;
 
   const isWebsiteView = ['landing', 'examples', 'features'].includes(view);
 
   // Simplified profile object for Sidebar since we are using fetched Profile
-  const derivedProfile = profile ? { name: profile.email, user: profile.email, initials: (profile.email || "U").substring(0, 2).toUpperCase() } : null;
+  const derivedProfile: UserProfile | null = profile
+    ? {
+      id: profile.id,
+      email: profile.email,
+      name: profile.name || profile.full_name || profile.email,
+      role: profile.role || 'user',
+      created_at: profile.created_at,
+      photoUrl: profile.avatar_url || profile.photo_url, // Check both common conventions
+      initials: (profile.name || profile.email || "U").substring(0, 2).toUpperCase()
+    }
+    : (user ? {
+      id: user.id,
+      email: user.email!,
+      name: user.email!, // Fallback
+      role: 'user',
+      created_at: new Date().toISOString(),
+      initials: (user.email || "U").substring(0, 2).toUpperCase()
+    } : null);
 
   return (
     <div className={`flex flex-col min-h-screen w-full transition-colors duration-700 selection:bg-blue-500 selection:text-white ${theme === 'dark' ? 'bg-black text-white' : 'bg-white text-gray-900'}`}>
@@ -438,7 +458,7 @@ const FlipBookAppContent: React.FC = () => {
         />
       )}
 
-      {derivedProfile && <AccountSettingsModal isOpen={isAccountSettingsOpen} onClose={() => setIsAccountSettingsOpen(false)} userProfile={derivedProfile} onSave={() => { }} theme={theme} />}
+      {derivedProfile && <AccountSettingsModal isOpen={isAccountSettingsOpen} onClose={() => setIsAccountSettingsOpen(false)} userProfile={derivedProfile} onSave={() => { setIsAccountSettingsOpen(false); window.location.reload(); }} theme={theme} />}
     </div>
   );
 };
