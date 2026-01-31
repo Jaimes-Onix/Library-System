@@ -84,12 +84,17 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
             verificationToken
           });
           showInfoToast(`Verification code sent to ${email}`);
-        } catch (emailError) {
-          console.error('Failed to send email:', emailError);
-          showInfoToast(`Your verification code is: ${verificationCode}`);
+        } catch (emailError: any) {
+          console.warn('Failed to send email (likely due to missing configuration), falling back to manual code display:', emailError);
+          // This is a crucial fallback for development or when email service is down
+          // We show the code directly to the user so they can still proceed
+          showInfoToast(`Service Mode: Your code is ${verificationCode}`);
+
+          // You might want to show a more persistent UI element here in a real app
+          // instead of just a toast that might disappear
         }
 
-        // Set QR verification state
+        // Set QR verification state (which triggers the code entry UI)
         setQrVerification({
           email,
           token: verificationToken,
@@ -98,6 +103,7 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
         });
       }
     } catch (err: any) {
+      console.error('Authentication Error:', err);
       showErrorToast(err.message || "Authentication failed. Please try again.");
       setIsLoading(false);
     }
