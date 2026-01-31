@@ -90,6 +90,26 @@ const FlipBookAppContent: React.FC = () => {
 
   const [theme, setTheme] = useState<Theme>('light');
   const [view, setView] = useState<AppView | 'admin'>('landing');
+
+  useEffect(() => {
+    console.log('[APP] View changed to:', view);
+  }, [view]);
+
+  const handleSetView = (newView: AppView | 'admin') => {
+    console.log('[APP] Setting view to:', newView);
+    setView(newView);
+  };
+
+  // Auto-redirect to landing when user logs out
+  useEffect(() => {
+    if (!user && view !== 'landing' && view !== 'examples' && view !== 'features') {
+      console.log('[APP] User logged out, redirecting to landing');
+      setView('landing');
+      setSelectedBook(null);
+      setPendingBook(null);
+    }
+  }, [user, view]);
+
   const [readerMode, setReaderMode] = useState<'manual' | 'preview'>('manual');
   const [books, setBooks] = useState<LibraryBook[]>([]);
   const [selectedBook, setSelectedBook] = useState<LibraryBook | null>(null);
@@ -173,70 +193,112 @@ const FlipBookAppContent: React.FC = () => {
   const extractCover = async (doc: any): Promise<string> => {
     try {
       const page = await doc.getPage(1);
-      const viewport = page.getViewport({ scale: 0.5 });
+      const viewport = page.getViewport({ scale: 0.3 }); // Reduced for speed
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       if (!ctx) return "";
       canvas.width = viewport.width;
       canvas.height = viewport.height;
       await page.render({ canvasContext: ctx, viewport: viewport }).promise;
-      return canvas.toDataURL('image/jpeg', 0.8);
+      return canvas.toDataURL('image/jpeg', 0.4); // Lower quality for faster upload
     } catch { return ""; }
   };
 
   const handleFilesSelect = async (files: File[]) => {
+    // Validate PDFs upfront
+    const pdfFiles = files.filter(f => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'));
+    if (pdfFiles.length === 0) {
+      alert("Please upload PDF files only");
+      return;
+    }
+    if (pdfFiles.length !== files.length) {
+      alert(`${files.length - pdfFiles.length} non-PDF file(s) skipped`);
+    }
+
     setLoadingStatus("Uploading to Cloud...");
     try {
-      for (const file of files) {
+      for (const file of pdfFiles) {
+        console.log(`[UPLOAD] Starting upload for: ${file.name}`);
         const fileExt = file.name.split('.').pop();
         const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
         const filePath = `${user?.id}/${fileName}`;
 
         // 1. Upload File
+        console.log(`[UPLOAD] Step 1: Uploading PDF to storage...`);
         const { error: uploadError } = await supabase.storage
           .from('books')
           .upload(filePath, file);
 
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+          console.error("[UPLOAD] Storage upload failed:", uploadError);
+          throw uploadError;
+        }
+        console.log(`[UPLOAD] Step 1: PDF uploaded successfully`);
 
         // 2. Generate Cover & Info
-        const doc = await getDocument(file);
+        console.log(`[UPLOAD] Step 2: Parsing PDF...`);
+        let doc = null;
         let coverUrl = "";
         let publicCoverUrl = "";
+        let totalPages = 0;
 
-        if (doc) {
-          coverUrl = await extractCover(doc);
-          // Upload Cover to public bucket for easier access
-          if (coverUrl) {
-            const coverBlob = await (await fetch(coverUrl)).blob();
-            const coverPath = `${user?.id}/${fileName.replace('.pdf', '.jpg')}`;
-            await supabase.storage.from('covers').upload(coverPath, coverBlob);
-            const { data: publicData } = supabase.storage.from('covers').getPublicUrl(coverPath);
-            publicCoverUrl = publicData.publicUrl;
+        try {
+          doc = await getDocument(file);
+          totalPages = doc?.numPages || 0;
+          console.log(`[UPLOAD] PDF parsed: ${totalPages} pages`);
+
+          console.log(`[UPLOAD] Step 3: Generating cover...`);
+          if (doc) {
+            coverUrl = await extractCover(doc);
+            console.log(`[UPLOAD] Cover extracted: ${coverUrl ? 'success' : 'failed'}`);
+
+            // Upload Cover to public bucket for easier access
+            if (coverUrl) {
+              console.log(`[UPLOAD] Step 4: Uploading cover to storage...`);
+              const coverBlob = await (await fetch(coverUrl)).blob();
+              const coverPath = `${user?.id}/${fileName.replace('.pdf', '.jpg')}`;
+              const { error: coverError } = await supabase.storage.from('covers').upload(coverPath, coverBlob);
+              if (coverError) {
+                console.warn("[UPLOAD] Cover upload failed, skipping:", coverError);
+              } else {
+                const { data: publicData } = supabase.storage.from('covers').getPublicUrl(coverPath);
+                publicCoverUrl = publicData.publicUrl;
+                console.log(`[UPLOAD] Cover uploaded successfully`);
+              }
+            }
           }
+        } catch (pdfError) {
+          console.warn("[UPLOAD] PDF parsing/cover generation failed, continuing anyway:", pdfError);
         }
 
         // 3. Insert Record
+        console.log(`[UPLOAD] Step 5: Inserting database record...`);
         const { error: dbError } = await supabase.from('books').insert({
           user_id: user?.id,
           title: file.name,
           file_url: filePath,
-          cover_url: publicCoverUrl,
-          total_pages: doc?.numPages || 0
+          cover_url: publicCoverUrl || "",
+          total_pages: totalPages
         });
 
-        if (dbError) throw dbError;
+        if (dbError) {
+          console.error("[UPLOAD] Database insert failed:", dbError);
+          throw dbError;
+        }
+        console.log(`[UPLOAD] Database record inserted successfully`);
       }
 
+      console.log(`[UPLOAD] All files uploaded, fetching books...`);
       await fetchBooks();
       setLoadingStatus(null);
-      setView('library');
+      handleSetView('library');
+      console.log(`[UPLOAD] Complete!`);
 
     } catch (err: any) {
-      console.error(err);
+      console.error("[UPLOAD] Fatal error:", err);
       alert("Upload failed: " + err.message);
+      setLoadingStatus(null);
     }
-    finally { setLoadingStatus(null); }
   };
 
   const handleCategorySelection = (category: Category) => {
@@ -251,7 +313,7 @@ const FlipBookAppContent: React.FC = () => {
     } else {
       setCategorizingBooks([]);
       setCurrentCategorizingIndex(-1);
-      setView('library');
+      handleSetView('library');
     }
   };
 
@@ -340,7 +402,7 @@ const FlipBookAppContent: React.FC = () => {
       <Header
         view={view}
         theme={theme}
-        onNavigate={setView}
+        onNavigate={handleSetView}
         onOpenSettings={() => setIsAccountSettingsOpen(true)}
         onAuth={() => setIsShowingAuth(true)}
         isAuthenticated={!!user}
@@ -357,7 +419,7 @@ const FlipBookAppContent: React.FC = () => {
             onFilterChange={setLibraryFilter}
             onLogout={signOut}
             onToggleTheme={toggleTheme}
-            onOpenSettings={() => isAdmin ? setView('admin') : setIsAccountSettingsOpen(true)}
+            onOpenSettings={() => isAdmin ? handleSetView('admin') : setIsAccountSettingsOpen(true)}
           />
         )}
 
@@ -365,13 +427,13 @@ const FlipBookAppContent: React.FC = () => {
           {view === 'landing' && (
             <Home
               theme={theme}
-              onStart={user ? () => setView('library') : () => setIsShowingAuth(true)}
-              onViewExamples={() => setView('examples')}
+              onStart={user ? () => handleSetView('library') : () => setIsShowingAuth(true)}
+              onViewExamples={() => handleSetView('examples')}
             />
           )}
 
           {view === 'examples' && (
-            <ExamplesPage theme={theme} onSelectSample={user ? () => setView('library') : () => setIsShowingAuth(true)} />
+            <ExamplesPage theme={theme} onSelectSample={user ? () => handleSetView('library') : () => setIsShowingAuth(true)} />
           )}
 
           {view === 'features' && (
@@ -379,11 +441,11 @@ const FlipBookAppContent: React.FC = () => {
           )}
 
           {view === 'admin' && isAdmin && (
-            <AdminDashboard theme={theme} onExit={() => setView('library')} />
+            <AdminDashboard theme={theme} onExit={() => handleSetView('library')} />
           )}
 
           {view === 'upload' && (
-            <Upload theme={theme} onFilesSelect={handleFilesSelect} onBack={() => setView('library')} isLoading={!!loadingStatus} statusMessage={loadingStatus || ""} />
+            <Upload theme={theme} onFilesSelect={handleFilesSelect} onBack={() => handleSetView('library')} isLoading={!!loadingStatus} statusMessage={loadingStatus || ""} />
           )}
 
           {view === 'library' && (
@@ -394,10 +456,11 @@ const FlipBookAppContent: React.FC = () => {
                 activeFilter={libraryFilter}
                 books={filteredBooks}
                 onSelectBook={setPendingBook}
-                onAddNew={() => setView('upload')}
+                onAddNew={() => handleSetView('upload')}
                 onRemoveBook={(id) => setBooks(b => b.filter(x => x && x.id !== id))}
                 onToggleFavorite={(id) => setBooks(b => b.map(x => x && x.id === id ? { ...x, isFavorite: !x.isFavorite } : x))}
               />
+
             </div>
           )}
 
@@ -407,7 +470,7 @@ const FlipBookAppContent: React.FC = () => {
                 <div className={`h-full transition-all duration-700 ${theme === 'dark' ? 'bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.6)]' : 'bg-black'}`} style={{ width: `${((currentPage + 1) / (selectedBook.totalPages || 1)) * 100}%` }} />
               </div>
 
-              <button onClick={() => { setView('library'); setSelectedBook(null); }}
+              <button onClick={() => { handleSetView('library'); setSelectedBook(null); }}
                 className={`fixed top-8 left-8 z-[110] p-4 backdrop-blur-md border transition-all shadow-2xl rounded-full ${theme === 'dark' ? 'bg-white/10 border-white/10 text-white hover:bg-white hover:text-black' : 'bg-black/5 border-black/5 text-black hover:bg-black hover:text-white'}`}>
                 <BookOpen size={24} />
               </button>
@@ -440,7 +503,7 @@ const FlipBookAppContent: React.FC = () => {
         theme={theme}
         book={pendingBook}
         onClose={() => setPendingBook(null)}
-        onSelectMode={(m) => { setReaderMode(m); setSelectedBook(pendingBook); setPendingBook(null); setView('reader'); setCurrentPage(0); }}
+        onSelectMode={(m) => { setReaderMode(m); setSelectedBook(pendingBook); setPendingBook(null); handleSetView('reader'); setCurrentPage(0); }}
         onSummarize={handleSummarize}
         onApplySummary={(id, s) => setBooks(b => b.map(x => x && x.id === id ? { ...x, summary: s } : x))}
         isSummarizing={isSummarizing}
@@ -458,7 +521,7 @@ const FlipBookAppContent: React.FC = () => {
         />
       )}
 
-      {derivedProfile && <AccountSettingsModal isOpen={isAccountSettingsOpen} onClose={() => setIsAccountSettingsOpen(false)} userProfile={derivedProfile} onSave={() => { setIsAccountSettingsOpen(false); window.location.reload(); }} theme={theme} />}
+      {derivedProfile && <AccountSettingsModal isOpen={isAccountSettingsOpen} onClose={() => setIsAccountSettingsOpen(false)} userProfile={derivedProfile} onSave={() => setIsAccountSettingsOpen(false)} theme={theme} onLogout={signOut} />}
     </div>
   );
 };

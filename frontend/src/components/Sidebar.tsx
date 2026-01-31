@@ -17,7 +17,7 @@ import { UserProfile, Theme } from '../types';
 interface SidebarProps {
   theme: Theme;
   userProfile: UserProfile;
-  onLogout: () => void;
+  onLogout: () => Promise<void>;
   activeFilter: string;
   onFilterChange: (filter: string) => void;
   onToggleTheme: () => void;
@@ -61,6 +61,8 @@ const Sidebar: React.FC<SidebarProps> = ({
     { id: 'Creative', label: 'Creative', icon: Palette, color: 'bg-pink-500' },
   ];
 
+
+
   return (
     <aside className={`w-84 h-full flex flex-col z-40 hidden md:flex transition-all duration-700 ease-in-out border-r shadow-2xl ${sidebarBg} ${sidebarText} ${sidebarBorder}`}>
       {/* User Profile Header */}
@@ -100,34 +102,36 @@ const Sidebar: React.FC<SidebarProps> = ({
       </div>
 
       {/* Categories */}
-      <div className="px-10 py-8">
-        <p className={`px-5 text-xs font-black uppercase tracking-[0.2em] mb-5 ${sidebarSecondaryText}`}>Categories</p>
+      <div className="flex-1 overflow-y-auto no-scrollbar px-10">
         <div className="space-y-2">
+          <p className={`px-5 text-xs font-black uppercase tracking-[0.2em] mb-4 ${sidebarSecondaryText}`}>Categories</p>
           {categories.map((cat) => (
             <button
               key={cat.id}
               onClick={() => onFilterChange(cat.id)}
-              className={`w-full flex items-center gap-4 px-6 py-4 rounded-xl text-sm font-bold transition-all
+              className={`w-full flex items-center gap-4 px-6 py-5 rounded-[20px] transition-all text-base font-bold
                 ${activeFilter === cat.id
-                  ? `${isDark ? 'bg-gray-200 text-black shadow-lg' : 'bg-white/10 text-white shadow-lg'} translate-x-1`
-                  : `${sidebarSecondaryText} ${sidebarItemHover}`
-                }`}
+                  ? `${sidebarItemActive} shadow-xl translate-x-1`
+                  : `${sidebarText} ${sidebarItemHover}`
+                }
+              `}
             >
-              <div className={`w-3 h-3 rounded-full ${cat.color} ${activeFilter === cat.id ? 'scale-125' : ''}`} />
+              <div className={`w-3 h-3 rounded-full ${cat.color} ${activeFilter === cat.id ? 'ring-4 ring-offset-2 ring-offset-current' : ''}`} />
+              <cat.icon size={22} strokeWidth={activeFilter === cat.id ? 2.5 : 2} />
               {cat.label}
             </button>
           ))}
         </div>
       </div>
 
-      {/* Footer Actions */}
-      <div className={`mt-auto p-10 border-t ${sidebarBorder} space-y-4`}>
+      {/* Action Buttons */}
+      <div className="p-10 space-y-3">
         <button
           onClick={onToggleTheme}
           className={`w-full flex items-center gap-4 px-6 py-5 rounded-[20px] text-base font-bold transition-all ${sidebarText} ${sidebarItemHover}`}
         >
-          {isDark ? <Sun size={22} className="text-orange-400" /> : <Moon size={22} className="text-blue-400" />}
-          {isDark ? 'Light' : 'Dark'} Mode
+          {isDark ? <Moon size={22} /> : <Sun size={22} />}
+          {isDark ? 'Light Mode' : 'Dark Mode'}
         </button>
 
         <button
@@ -139,12 +143,22 @@ const Sidebar: React.FC<SidebarProps> = ({
         </button>
 
         <button
-          onClick={onLogout}
+          onClick={async () => {
+            console.log('[SIDEBAR] 🔴 Sign Out button clicked!');
+            try {
+              await onLogout();
+              console.log('[SIDEBAR] ✅ onLogout() completed');
+            } catch (error) {
+              console.error('[SIDEBAR] ❌ Error during logout:', error);
+            }
+          }}
           className={`w-full flex items-center gap-4 px-6 py-5 rounded-[20px] text-base font-black text-red-500 transition-all active:scale-95 ${isDark ? 'hover:bg-red-50' : 'hover:bg-red-500/10'}`}
         >
           <LogOut size={22} />
           Sign Out
         </button>
+
+
       </div>
     </aside>
   );

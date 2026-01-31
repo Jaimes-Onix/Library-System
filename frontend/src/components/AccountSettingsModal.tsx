@@ -10,6 +10,7 @@ interface AccountSettingsModalProps {
   userProfile: UserProfile;
   onSave: (updatedProfile: UserProfile) => void;
   theme: Theme;
+  onLogout: () => Promise<void>;
 }
 
 const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
@@ -17,7 +18,8 @@ const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
   onClose,
   userProfile,
   onSave,
-  theme
+  theme,
+  onLogout
 }) => {
   const [name, setName] = useState(userProfile.name);
   const [photoUrl, setPhotoUrl] = useState(userProfile.photoUrl || '');
@@ -47,9 +49,11 @@ const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
 
     setIsSaving(true);
     try {
+      console.log('[PROFILE SAVE] Starting profile update...');
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
+      console.log('[PROFILE SAVE] Updating profile for user:', user.id);
       const { data, error } = await supabase
         .from('profiles')
         .update({
@@ -59,26 +63,29 @@ const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
         .select();
 
       if (error) {
-        console.error("Supabase Profile Update Error:", error);
+        console.error("[PROFILE SAVE] Supabase error:", error);
         throw error;
       }
 
-      console.log("Profile updated successfully:", data);
+      console.log("[PROFILE SAVE] Profile updated successfully:", data);
 
+      // Update parent state
       onSave({
         ...userProfile,
         name: name.trim(),
         photoUrl: photoUrl,
         initials: getInitials(name.trim())
       });
+
       setShowSuccess(true);
       setTimeout(() => {
         setShowSuccess(false);
         onClose();
       }, 800);
     } catch (err: any) {
-      console.error("Profile Save Failure:", err);
+      console.error("[PROFILE SAVE] Failed:", err);
       alert(`Save failed: ${err.message || "Unknown error"}`);
+      setIsSaving(false); // Reset spinner on error
     } finally {
       setIsSaving(false);
     }
@@ -184,6 +191,21 @@ const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
             className={`flex-1 py-4 rounded-[20px] font-bold text-sm transition-all active:scale-95 ${isDark ? 'bg-white/5 text-white hover:bg-white/10' : 'bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 shadow-sm'}`}
           >
             Cancel
+          </button>
+
+          <button
+            onClick={async () => {
+              console.log('[MODAL] 🔴 Sign Out button clicked!');
+              try {
+                await onLogout();
+                console.log('[MODAL] ✅ onLogout() completed');
+              } catch (error) {
+                console.error('[MODAL] ❌ Error during logout:', error);
+              }
+            }}
+            className="flex-1 py-4 rounded-[20px] font-bold text-sm transition-all active:scale-95 bg-red-50 text-red-600 border border-red-100 hover:bg-red-100"
+          >
+            Sign Out
           </button>
 
           <button

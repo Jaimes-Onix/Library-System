@@ -1,8 +1,7 @@
 
 import React from 'react';
-import { ArrowRight, Sparkles, ChevronRight } from 'lucide-react';
+import { ArrowRight, Sparkles, Upload, Zap, Shield, BookOpen } from 'lucide-react';
 import { Theme } from '../types';
-import RubiksCube from './RubiksCube';
 
 interface HomeProps {
   theme: Theme;
@@ -10,124 +9,222 @@ interface HomeProps {
   onViewExamples: () => void;
 }
 
-
-
 const Home: React.FC<HomeProps> = ({ theme, onStart, onViewExamples }) => {
   const isDark = theme === 'dark';
 
   return (
-    <div className={`w-full ${isDark ? 'bg-black text-white' : 'bg-white text-gray-900'} selection:bg-blue-500 selection:text-white`}>
-      <style>{`
-        .preserve-3d { transform-style: preserve-3d; }
-        .rotate-y-90 { transform: rotateY(90deg) translateZ(32px); }
-        .rotate-y-180 { transform: rotateY(180deg) translateZ(32px); }
-        .-rotate-y-90 { transform: rotateY(-90deg) translateZ(32px); }
-        .rotate-x-90 { transform: rotateX(90deg) translateZ(32px); }
-        .-rotate-x-90 { transform: rotateX(-90deg) translateZ(32px); }
-        
-        @media (min-width: 768px) {
-          .rotate-y-90 { transform: rotateY(90deg) translateZ(40px); }
-          .rotate-y-180 { transform: rotateY(180deg) translateZ(40px); }
-          .-rotate-y-90 { transform: rotateY(-90deg) translateZ(40px); }
-          .rotate-x-90 { transform: rotateX(90deg) translateZ(40px); }
-          .-rotate-x-90 { transform: rotateX(-90deg) translateZ(40px); }
-        }
-
-        @keyframes cube-rotate {
-          0% { transform: rotateX(0) rotateY(0) rotateZ(0); }
-          100% { transform: rotateX(360deg) rotateY(720deg) rotateZ(360deg); }
-        }
-        .animate-cube-rotate {
-          animation: cube-rotate 25s linear infinite;
-        }
-      `}</style>
+    <div className="w-full bg-[#0a0a0a] text-white selection:bg-orange-500 selection:text-white overflow-hidden">
 
       {/* Hero Section */}
-      <section className="relative min-h-[90vh] flex items-center pt-20 px-10 md:px-20 overflow-hidden">
-        {/* Radial background glow */}
-        <div className="absolute top-0 right-0 w-[60%] h-[80%] bg-gradient-to-bl from-blue-900/10 via-transparent to-transparent -z-10" />
+      <section className="relative min-h-screen flex items-center px-6 md:px-16 py-32">
+        {/* Background Gradient */}
+        <div className="absolute inset-0 overflow-hidden -z-10">
+          {/* Radial gradient - orange/red */}
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[120%] bg-gradient-radial from-orange-600/20 via-red-900/10 to-transparent blur-3xl" />
 
-        <div className="max-w-[1400px] mx-auto w-full flex flex-col lg:flex-row items-center justify-between gap-16">
-          <div className="flex-1 space-y-10 animate-in fade-in slide-in-from-left-8 duration-1000">
-            {/* Launch Badge */}
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-zinc-900 border border-zinc-800 text-[11px] font-bold text-zinc-400 group cursor-pointer hover:border-amber-500/50 transition-all">
-              <span className="text-amber-500">Email for developers</span>
-              <ChevronRight size={12} className="group-hover:translate-x-0.5 transition-transform" />
+          {/* Noise texture overlay */}
+          <div className="absolute inset-0 opacity-[0.015] bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIzMDAiIGhlaWdodD0iMzAwIj48ZmlsdGVyIGlkPSJhIiB4PSIwIiB5PSIwIj48ZmVUdXJidWxlbmNlIGJhc2VGcmVxdWVuY3k9Ii43NSIgc3RpdGNoVGlsZXM9InN0aXRjaCIgdHlwZT0iZnJhY3RhbE5vaXNlIi8+PGZlQ29sb3JNYXRyaXggdHlwZT0ic2F0dXJhdGUiIHZhbHVlcz0iMCIvPjwvZmlsdGVyPjxwYXRoIGQ9Ik0wIDBoMzAwdjMwMEgweiIgZmlsdGVyPSJ1cmwoI2EpIiBvcGFjaXR5PSIuMDUiLz48L3N2Zz4=')]" />
+        </div>
+
+        <div className="max-w-[1400px] mx-auto w-full">
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
+
+            {/* Left: Content */}
+            <div className="space-y-10 animate-in fade-in slide-in-from-left-8 duration-1000 relative z-10">
+
+              {/* Small badge */}
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-sm">
+                <div className="w-2 h-2 rounded-full bg-orange-500 animate-pulse" />
+                <span className="text-xs font-bold tracking-wide text-gray-400">DIGITAL READING EXPERIENCE</span>
+              </div>
+
+              {/* Main Headline */}
+              <div className="space-y-6">
+                <h1 className="text-6xl md:text-8xl font-black tracking-tight leading-[0.9] text-white">
+                  MOVING
+                  <br />
+                  <span className="bg-gradient-to-r from-orange-500 via-red-500 to-orange-600 bg-clip-text text-transparent">
+                    BOOKS
+                  </span>
+                  <br />
+                  FORWARD
+                </h1>
+                <p className="text-xl md:text-2xl font-medium text-gray-400 max-w-xl leading-relaxed">
+                  Transform static PDFs into dynamic, interactive flipbooks.
+                  A modern reading experience for the digital age.
+                </p>
+              </div>
+
+              {/* CTAs */}
+              <div className="flex flex-wrap gap-4">
+                <button
+                  onClick={onStart}
+                  className="group px-8 py-4 rounded-full font-bold text-base transition-all duration-300 flex items-center gap-3 bg-white text-black hover:bg-gray-100 shadow-2xl shadow-orange-500/20 hover:shadow-orange-500/30 active:scale-95"
+                >
+                  GET STARTED
+                  <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
+                </button>
+
+                <button
+                  onClick={onViewExamples}
+                  className="px-8 py-4 rounded-full font-bold text-base transition-all bg-white/5 border border-white/10 hover:bg-white/10 backdrop-blur-sm active:scale-95"
+                >
+                  VIEW DEMO
+                </button>
+              </div>
+
+              {/* Stats */}
+              <div className="flex gap-12 pt-6 border-t border-white/10">
+                <div>
+                  <div className="text-3xl font-bold text-white">1000+</div>
+                  <div className="text-sm text-gray-500">Documents</div>
+                </div>
+                <div>
+                  <div className="text-3xl font-bold text-white">500+</div>
+                  <div className="text-sm text-gray-500">Active Users</div>
+                </div>
+                <div>
+                  <div className="text-3xl font-bold bg-gradient-to-r from-orange-500 to-red-500 bg-clip-text text-transparent">100%</div>
+                  <div className="text-sm text-gray-500">Secure</div>
+                </div>
+              </div>
             </div>
 
-            <h1 className="text-6xl md:text-8xl font-black tracking-tight leading-[1.0] text-balance" style={{ fontFamily: "'Playfair Display', serif" }}>
-              Email for <br />
-              <span className="text-zinc-400">developers</span>
-            </h1>
-
-            <p className="text-lg md:text-xl font-medium text-zinc-500 max-w-lg leading-relaxed">
-              The best way to reach humans instead of spam folders.
-              Deliver transactional and marketing emails at scale.
-            </p>
-
-            <div className="flex flex-col sm:flex-row items-center gap-6 pt-4">
-              <button
-                onClick={onStart}
-                className="w-full sm:w-auto px-10 py-4 bg-white hover:bg-gray-100 text-black rounded-[14px] text-base font-bold transition-all active:scale-95 shadow-xl"
-              >
-                Get Started
-              </button>
-              <button
-                onClick={onViewExamples}
-                className="w-full sm:w-auto px-10 py-4 text-zinc-500 hover:text-white font-bold transition-colors flex items-center justify-center gap-2 group"
-              >
-                Documentation
-                <ArrowRight size={18} className="group-hover:translate-x-1 transition-transform" />
-              </button>
+            {/* Right: 3D Metallic Elements */}
+            <div className="flex items-center justify-center lg:justify-end animate-in fade-in zoom-in duration-1000 delay-300 relative">
+              <div className="relative w-full max-w-[600px] aspect-video">
+                <img
+                  src="/brain/f6195bc0-5ec7-4782-a097-c3c2b1e647a1/metallic_3d_arrows_1769876295338.png"
+                  alt="3D Metallic Arrows"
+                  className="w-full h-full object-contain drop-shadow-2xl"
+                />
+                {/* Glow effect */}
+                <div className="absolute inset-0 bg-gradient-to-tr from-orange-500/20 to-red-500/20 blur-3xl -z-10 scale-110" />
+              </div>
             </div>
-          </div>
-
-          <div className="flex-1 flex justify-center items-center lg:justify-end animate-in fade-in zoom-in duration-1000">
-            <RubiksCube />
           </div>
         </div>
       </section>
 
-      {/* Feature Section (Refined for Dark Theme) */}
-      <section className="py-40 px-10 md:px-20 border-t border-zinc-900">
+      {/* Features Section */}
+      <section className="py-32 px-6 md:px-16 bg-gradient-to-b from-transparent via-orange-500/5 to-transparent">
         <div className="max-w-[1400px] mx-auto">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-16 md:gap-24">
-            <div className="space-y-6">
-              <div className="w-12 h-12 bg-zinc-900 rounded-xl flex items-center justify-center text-blue-500 border border-zinc-800">
-                <Sparkles size={24} />
+
+          {/* Section Header */}
+          <div className="text-center mb-20 space-y-4">
+            <h2 className="text-5xl md:text-6xl font-black text-white">
+              Powerful Features
+            </h2>
+            <p className="text-xl text-gray-400 max-w-2xl mx-auto">
+              Everything you need to transform and manage your PDF library
+            </p>
+          </div>
+
+          {/* Feature Grid */}
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+
+            {/* Feature 1 */}
+            <div className="group p-8 rounded-2xl border bg-white/5 border-white/10 hover:bg-white/10 hover:border-orange-500/50 transition-all duration-300">
+              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg shadow-orange-500/50">
+                <Upload className="text-white" size={24} />
               </div>
-              <h3 className="text-xl font-bold tracking-tight">AI Augmented</h3>
-              <p className="text-zinc-500 font-medium leading-relaxed">Gemini-powered insights generate high-conversion hooks for every document in your archive.</p>
+              <h3 className="text-2xl font-bold mb-3 text-white">
+                Lightning Fast
+              </h3>
+              <p className="text-gray-400 leading-relaxed">
+                Upload PDFs in seconds with optimized processing and automatic cover generation.
+              </p>
             </div>
-            <div className="space-y-6">
-              <div className="w-12 h-12 bg-zinc-900 rounded-xl flex items-center justify-center text-purple-500 border border-zinc-800">
-                <div className="w-5 h-5 border-2 border-current rounded-sm rotate-12" />
+
+            {/* Feature 2 */}
+            <div className="group p-8 rounded-2xl border bg-white/5 border-white/10 hover:bg-white/10 hover:border-orange-500/50 transition-all duration-300">
+              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg shadow-orange-500/50">
+                <Zap className="text-white" size={24} />
               </div>
-              <h3 className="text-xl font-bold tracking-tight">Spatial Physics</h3>
-              <p className="text-zinc-500 font-medium leading-relaxed">Proprietary 3D rendering simulates real-world paper weight, friction, and surface illumination.</p>
+              <h3 className="text-2xl font-bold mb-3 text-white">
+                AI-Powered
+              </h3>
+              <p className="text-gray-400 leading-relaxed">
+                Intelligent summaries and descriptions generated automatically using advanced AI.
+              </p>
             </div>
-            <div className="space-y-6">
-              <div className="w-12 h-12 bg-zinc-900 rounded-xl flex items-center justify-center text-orange-500 border border-zinc-800">
-                <ArrowRight className="rotate-[-45deg]" size={24} />
+
+            {/* Feature 3 */}
+            <div className="group p-8 rounded-2xl border bg-white/5 border-white/10 hover:bg-white/10 hover:border-orange-500/50 transition-all duration-300">
+              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg shadow-orange-500/50">
+                <BookOpen className="text-white" size={24} />
               </div>
-              <h3 className="text-xl font-bold tracking-tight">Enterprise Scale</h3>
-              <p className="text-zinc-500 font-medium leading-relaxed">Built for massive PDF collections. Intelligent fuzzy search helps you find any page in milliseconds.</p>
+              <h3 className="text-2xl font-bold mb-3 text-white">
+                Beautiful Reader
+              </h3>
+              <p className="text-gray-400 leading-relaxed">
+                Elegant flip-book interface with smooth animations and realistic page turns.
+              </p>
+            </div>
+
+            {/* Feature 4 */}
+            <div className="group p-8 rounded-2xl border bg-white/5 border-white/10 hover:bg-white/10 hover:border-orange-500/50 transition-all duration-300">
+              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg shadow-orange-500/50">
+                <Shield className="text-white" size={24} />
+              </div>
+              <h3 className="text-2xl font-bold mb-3 text-white">
+                Secure Storage
+              </h3>
+              <p className="text-gray-400 leading-relaxed">
+                Your documents are encrypted and stored securely. Only you have access to your library.
+              </p>
+            </div>
+
+            {/* Feature 5 */}
+            <div className="group p-8 rounded-2xl border bg-white/5 border-white/10 hover:bg-white/10 hover:border-orange-500/50 transition-all duration-300">
+              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg shadow-orange-500/50">
+                <Sparkles className="text-white" size={24} />
+              </div>
+              <h3 className="text-2xl font-bold mb-3 text-white">
+                Smart Organize
+              </h3>
+              <p className="text-gray-400 leading-relaxed">
+                Custom categories with easy search and filtering to find what you need quickly.
+              </p>
+            </div>
+
+            {/* Feature 6 */}
+            <div className="group p-8 rounded-2xl border bg-white/5 border-white/10 hover:bg-white/10 hover:border-orange-500/50 transition-all duration-300">
+              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg shadow-orange-500/50">
+                <BookOpen className="text-white" size={24} />
+              </div>
+              <h3 className="text-2xl font-bold mb-3 text-white">
+                Instant Loading
+              </h3>
+              <p className="text-gray-400 leading-relaxed">
+                On-demand loading for instant library access. No waiting for large libraries.
+              </p>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="py-20 px-10 border-t border-zinc-900 text-center">
-        <div className="max-w-[1400px] mx-auto flex flex-col md:flex-row justify-between items-center gap-8 text-sm font-bold tracking-widest uppercase text-zinc-600">
-          <span>© 2025 Digital FlipBook</span>
-          <div className="flex gap-10">
-            <a href="#" className="hover:text-white transition-colors">Twitter</a>
-            <a href="#" className="hover:text-white transition-colors">GitHub</a>
-            <a href="#" className="hover:text-white transition-colors">Terms</a>
-          </div>
+      {/* CTA Section */}
+      <section className="py-32 px-6 md:px-16 relative">
+        {/* Background glow */}
+        <div className="absolute inset-0 bg-gradient-to-t from-orange-500/10 via-transparent to-transparent" />
+
+        <div className="max-w-4xl mx-auto text-center space-y-8 relative z-10">
+          <h2 className="text-5xl md:text-7xl font-black text-white">
+            Ready to start?
+          </h2>
+          <p className="text-xl text-gray-400 max-w-2xl mx-auto">
+            Join thousands transforming their PDF experience. Sign up today and upload your first document in seconds.
+          </p>
+          <button
+            onClick={onStart}
+            className="group px-12 py-5 rounded-full font-bold text-lg transition-all duration-300 flex items-center gap-3 mx-auto bg-gradient-to-r from-orange-500 to-red-500 text-white hover:from-orange-600 hover:to-red-600 shadow-2xl shadow-orange-500/30 hover:shadow-orange-500/50 active:scale-95"
+          >
+            Start Free Today
+            <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
+          </button>
         </div>
-      </footer>
+      </section>
     </div>
   );
 };
