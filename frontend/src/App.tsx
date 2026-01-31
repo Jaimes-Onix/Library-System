@@ -1,0 +1,454 @@
+
+import React, { Component, useState, useRef, useEffect, useMemo, ErrorInfo, ReactNode } from 'react';
+import { GoogleGenAI } from "@google/genai";
+import { BookOpen, RefreshCw, ShieldAlert, AlertCircle } from 'lucide-react';
+import Header from './components/Header';
+import Upload from './components/Upload';
+import BookViewer from './components/BookViewer';
+import Controls from './components/Controls';
+import Library from './components/Library';
+import Sidebar from './components/Sidebar';
+import LibraryActionModal from './components/LibraryActionModal';
+import CategorySelectionModal from './components/CategorySelectionModal';
+import FeaturedCarousel from './components/FeaturedCarousel';
+import AccountSettingsModal from './components/AccountSettingsModal';
+import Auth from './components/Auth';
+import Home from './components/Home';
+import ExamplesPage from './components/ExamplesPage';
+import FeaturesPage from './components/FeaturesPage';
+import { getDocument } from './utils/pdfUtils';
+import { BookRef, LibraryBook, UserProfile, Category, Theme, AppView } from './types';
+import { Toaster } from './utils/toast';
+import { useAuth } from './context/AuthContext';
+import { supabase } from './lib/supabase';
+import AdminDashboard from './components/AdminDashboard';
+
+const generateSafeId = () => Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
+
+interface EBProps { children?: ReactNode }
+interface EBState {
+  hasError: boolean;
+  error: Error | null;
+  errorInfo: ErrorInfo | null
+}
+
+// Fixed ErrorBoundary by using React.Component explicitly to resolve type inheritance issues
+class ErrorBoundary extends React.Component<EBProps, EBState> {
+  constructor(props: EBProps) {
+    super(props);
+    this.state = { hasError: false, error: null, errorInfo: null };
+  }
+
+  static getDerivedStateFromError(error: Error): Partial<EBState> {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    this.setState({ errorInfo });
+    console.error("APP_CRASH_REPORTED:", error, errorInfo);
+  }
+
+  handleReset = () => window.location.reload();
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-white p-12 text-[#1d1d1f]">
+          <div className="max-w-xl w-full text-center">
+            <div className="mb-8 inline-flex p-6 bg-red-50 text-red-500 rounded-[32px] animate-pulse">
+              <AlertCircle size={48} strokeWidth={2.5} />
+            </div>
+            <h1 className="text-4xl font-black mb-4 tracking-tight">System Exception</h1>
+            <p className="text-lg text-gray-500 mb-8 font-medium">
+              The interface encountered a fatal error during rendering.
+            </p>
+
+            <div className="bg-gray-50 p-6 rounded-[24px] text-left font-mono text-xs mb-10 overflow-auto max-h-[300px] border border-gray-100 text-red-600">
+              <p className="font-black mb-2 uppercase tracking-widest text-gray-400">Error Details:</p>
+              <p className="font-bold mb-4">{this.state.error?.toString()}</p>
+              <p className="opacity-70">{this.state.error?.stack}</p>
+            </div>
+
+            <button
+              onClick={this.handleReset}
+              className="px-12 py-5 bg-black text-white rounded-[22px] font-black flex items-center gap-3 mx-auto transition-all active:scale-95 shadow-2xl hover:bg-gray-800"
+            >
+              <RefreshCw size={22} strokeWidth={2.5} />
+              Rebuild Interface
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children || null;
+  }
+}
+
+const FlipBookAppContent: React.FC = () => {
+  const { user, profile, isAdmin, signOut } = useAuth();
+  const [isShowingAuth, setIsShowingAuth] = useState(false);
+
+  const [theme, setTheme] = useState<Theme>('light');
+  const [view, setView] = useState<AppView | 'admin'>('landing');
+  const [readerMode, setReaderMode] = useState<'manual' | 'preview'>('manual');
+  const [books, setBooks] = useState<LibraryBook[]>([]);
+  const [selectedBook, setSelectedBook] = useState<LibraryBook | null>(null);
+  const [pendingBook, setPendingBook] = useState<LibraryBook | null>(null);
+
+  const [categorizingBooks, setCategorizingBooks] = useState<LibraryBook[]>([]);
+  const [currentCategorizingIndex, setCurrentCategorizingIndex] = useState(-1);
+
+  const [currentPage, setCurrentPage] = useState(0);
+  const [loadingStatus, setLoadingStatus] = useState<string | null>(null);
+  const [isSummarizing, setIsSummarizing] = useState(false);
+  const [zoomLevel, setZoomLevel] = useState(1);
+  const [libraryFilter, setLibraryFilter] = useState('all');
+  const [isAccountSettingsOpen, setIsAccountSettingsOpen] = useState(false);
+
+  // Close auth modal when user logs in
+  useEffect(() => {
+    if (user) {
+      setIsShowingAuth(false);
+    }
+  }, [user]);
+
+  // Fetch books from Supabase
+  useEffect(() => {
+    if (user) {
+      fetchBooks();
+    } else {
+      setBooks([]);
+    }
+  }, [user]);
+
+  const fetchBooks = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('books')
+        .select('*')
+        .eq('user_id', user?.id);
+
+      if (data) {
+        // Transform Supabase data to LibraryBook
+        const loadedBooks: LibraryBook[] = await Promise.all(
+          data.map(async (b: any) => {
+            // Load PDF document from URL (we might need to download it first or stream it)
+            // For now, assuming direct URL access works for pdfjs if CORS is set up.
+            // Since Storage is private, we need a signed URL.
+            const { data: signedData } = await supabase.storage.from('books').createSignedUrl(b.file_url, 3600);
+
+            let doc = null;
+            if (signedData?.signedUrl) {
+              try {
+                const response = await fetch(signedData.signedUrl);
+                const blob = await response.blob();
+                const file = new File([blob], b.title, { type: 'application/pdf' });
+                doc = await getDocument(file);
+              } catch (e) { console.error("Error loading PDF", e); }
+            }
+
+            return {
+              id: b.id,
+              name: b.title,
+              doc, // This might be null if load fails, need to handle
+              coverUrl: b.cover_url,
+              totalPages: doc?.numPages || 0,
+              isFavorite: false, // Need to add to schema or local
+              category: 'Uncategorized' // Need to add to schema
+            };
+          })
+        );
+        setBooks(loadedBooks.filter(b => b.doc !== null)); // Only show valid books for now
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const bookRef = useRef<BookRef | null>(null);
+
+  const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
+
+  const triggerAutoSummary = async (bookId: string, doc: any) => {
+    if (!process.env.API_KEY) return;
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const page = await doc.getPage(1);
+      const textContent = await page.getTextContent();
+      const text = textContent.items.map((i: any) => i.str).join(' ').slice(0, 1500);
+
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: `Analyze this text and write a single, sophisticated, "Apple-style" marketing hook (max 18 words) that describes the essence of this document. It should sound premium and inviting. Text: "${text}"`,
+      });
+
+      const summary = response.text?.trim() || "A curated digital experience.";
+      setBooks(prev => prev.map(b => b.id === bookId ? { ...b, summary } : b));
+    } catch (err) {
+      console.warn("Background AI hook failed:", err);
+    }
+  };
+
+  const extractCover = async (doc: any): Promise<string> => {
+    try {
+      const page = await doc.getPage(1);
+      const viewport = page.getViewport({ scale: 0.5 });
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return "";
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+      return canvas.toDataURL('image/jpeg', 0.8);
+    } catch { return ""; }
+  };
+
+  const handleFilesSelect = async (files: File[]) => {
+    setLoadingStatus("Uploading to Cloud...");
+    try {
+      for (const file of files) {
+        const fileExt = file.name.split('.').pop();
+        const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
+        const filePath = `${user?.id}/${fileName}`;
+
+        // 1. Upload File
+        const { error: uploadError } = await supabase.storage
+          .from('books')
+          .upload(filePath, file);
+
+        if (uploadError) throw uploadError;
+
+        // 2. Generate Cover & Info
+        const doc = await getDocument(file);
+        let coverUrl = "";
+        let publicCoverUrl = "";
+
+        if (doc) {
+          coverUrl = await extractCover(doc);
+          // Upload Cover to public bucket for easier access
+          if (coverUrl) {
+            const coverBlob = await (await fetch(coverUrl)).blob();
+            const coverPath = `${user?.id}/${fileName.replace('.pdf', '.jpg')}`;
+            await supabase.storage.from('covers').upload(coverPath, coverBlob);
+            const { data: publicData } = supabase.storage.from('covers').getPublicUrl(coverPath);
+            publicCoverUrl = publicData.publicUrl;
+          }
+        }
+
+        // 3. Insert Record
+        const { error: dbError } = await supabase.from('books').insert({
+          user_id: user?.id,
+          title: file.name,
+          file_url: filePath,
+          cover_url: publicCoverUrl
+        });
+
+        if (dbError) throw dbError;
+      }
+
+      await fetchBooks();
+      setLoadingStatus(null);
+      setView('library');
+
+    } catch (err: any) {
+      console.error(err);
+      alert("Upload failed: " + err.message);
+    }
+    finally { setLoadingStatus(null); }
+  };
+
+  const handleCategorySelection = (category: Category) => {
+    const book = categorizingBooks[currentCategorizingIndex];
+    if (!book) return;
+
+    const updatedBook = { ...book, category };
+    setBooks(prev => [...prev, updatedBook]);
+
+    if (currentCategorizingIndex < categorizingBooks.length - 1) {
+      setCurrentCategorizingIndex(prev => prev + 1);
+    } else {
+      setCategorizingBooks([]);
+      setCurrentCategorizingIndex(-1);
+      setView('library');
+    }
+  };
+
+  const handleSummarize = async (id: string) => {
+    if (!process.env.API_KEY) return "AI unavailable (Key missing)";
+    const book = books.find(b => b.id === id);
+    if (!book) return null;
+    setIsSummarizing(true);
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+      const page = await book.doc.getPage(1);
+      const textContent = await page.getTextContent();
+      const text = textContent.items.map((i: any) => i.str).join(' ').slice(0, 1000);
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: `Summarize this document into a compelling 15-word masterpiece hook: "${text}"`,
+      });
+      return response.text || "Summary ready.";
+    } catch { return "Summary ready."; }
+    finally { setIsSummarizing(false); }
+  };
+
+  const filteredBooks = useMemo(() => {
+    const safe = books.filter(b => b && b.doc);
+    if (libraryFilter === 'favorites') return safe.filter(b => b.isFavorite);
+    if (['Professional', 'Academic', 'Personal', 'Creative'].includes(libraryFilter)) {
+      return safe.filter(b => b.category === libraryFilter);
+    }
+    return safe;
+  }, [books, libraryFilter]);
+
+  useEffect(() => {
+    if (!user && ['library', 'upload', 'reader'].includes(view)) {
+      setView('landing');
+    }
+  }, [user, view]);
+
+  if (isShowingAuth) return <Auth onAuthSuccess={() => setIsShowingAuth(false)} />;
+
+  const isWebsiteView = ['landing', 'examples', 'features'].includes(view);
+
+  // Simplified profile object for Sidebar since we are using fetched Profile
+  const derivedProfile = profile ? { name: profile.email, user: profile.email, initials: (profile.email || "U").substring(0, 2).toUpperCase() } : null;
+
+  return (
+    <div className={`flex flex-col min-h-screen w-full transition-colors duration-700 selection:bg-blue-500 selection:text-white ${theme === 'dark' ? 'bg-black text-white' : 'bg-white text-gray-900'}`}>
+      <Toaster />
+      <Header
+        view={view}
+        theme={theme}
+        onNavigate={setView}
+        onOpenSettings={() => setIsAccountSettingsOpen(true)}
+        onAuth={() => setIsShowingAuth(true)}
+        isAuthenticated={!!user}
+        userProfile={derivedProfile}
+        fileName={selectedBook?.name}
+      />
+
+      <div className={`flex-1 flex pt-20 ${isWebsiteView ? 'flex-col' : 'overflow-hidden h-[calc(100vh-80px)]'}`}>
+        {!isWebsiteView && user && (
+          <Sidebar
+            theme={theme}
+            userProfile={derivedProfile!}
+            activeFilter={libraryFilter}
+            onFilterChange={setLibraryFilter}
+            onLogout={signOut}
+            onToggleTheme={toggleTheme}
+            onOpenSettings={() => isAdmin ? setView('admin') : setIsAccountSettingsOpen(true)}
+          />
+        )}
+
+        <main className={`flex-1 relative transition-colors duration-700 ${theme === 'dark' ? 'bg-black' : 'bg-white'} ${!isWebsiteView ? 'h-full overflow-hidden' : ''}`}>
+          {view === 'landing' && (
+            <Home
+              theme={theme}
+              onStart={user ? () => setView('library') : () => setIsShowingAuth(true)}
+              onViewExamples={() => setView('examples')}
+            />
+          )}
+
+          {view === 'examples' && (
+            <ExamplesPage theme={theme} onSelectSample={user ? () => setView('library') : () => setIsShowingAuth(true)} />
+          )}
+
+          {view === 'features' && (
+            <FeaturesPage theme={theme} />
+          )}
+
+          {view === 'admin' && isAdmin && (
+            <AdminDashboard theme={theme} onExit={() => setView('library')} />
+          )}
+
+          {view === 'upload' && (
+            <Upload theme={theme} onFilesSelect={handleFilesSelect} onBack={() => setView('library')} isLoading={!!loadingStatus} statusMessage={loadingStatus || ""} />
+          )}
+
+          {view === 'library' && (
+            <div className="h-full overflow-y-auto no-scrollbar">
+              {books.length > 0 && libraryFilter === 'all' && <FeaturedCarousel books={books.slice(0, 5)} theme={theme} />}
+              <Library
+                theme={theme}
+                activeFilter={libraryFilter}
+                books={filteredBooks}
+                onSelectBook={setPendingBook}
+                onAddNew={() => setView('upload')}
+                onRemoveBook={(id) => setBooks(b => b.filter(x => x && x.id !== id))}
+                onToggleFavorite={(id) => setBooks(b => b.map(x => x && x.id === id ? { ...x, isFavorite: !x.isFavorite } : x))}
+              />
+            </div>
+          )}
+
+          {view === 'reader' && selectedBook && (
+            <div className={`fixed inset-0 z-[60] animate-in fade-in duration-700 ${theme === 'dark' ? 'bg-black' : 'bg-white'}`}>
+              <div className={`fixed top-0 left-0 w-full h-[3px] z-[100] ${theme === 'dark' ? 'bg-zinc-900' : 'bg-gray-100'}`}>
+                <div className={`h-full transition-all duration-700 ${theme === 'dark' ? 'bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.6)]' : 'bg-black'}`} style={{ width: `${((currentPage + 1) / (selectedBook.totalPages || 1)) * 100}%` }} />
+              </div>
+
+              <button onClick={() => { setView('library'); setSelectedBook(null); }}
+                className={`fixed top-8 left-8 z-[110] p-4 backdrop-blur-md border transition-all shadow-2xl rounded-full ${theme === 'dark' ? 'bg-white/10 border-white/10 text-white hover:bg-white hover:text-black' : 'bg-black/5 border-black/5 text-black hover:bg-black hover:text-white'}`}>
+                <BookOpen size={24} />
+              </button>
+
+              <BookViewer
+                pdfDocument={selectedBook.doc}
+                onFlip={setCurrentPage}
+                onBookInit={(b) => { if (b) bookRef.current = { pageFlip: () => b.pageFlip() }; }}
+                mode={readerMode}
+                zoomLevel={zoomLevel}
+                onZoomChange={setZoomLevel}
+                theme={theme}
+              />
+
+              <Controls
+                theme={theme}
+                currentPage={currentPage}
+                totalPages={selectedBook.totalPages || 1}
+                zoomLevel={zoomLevel}
+                onZoomChange={setZoomLevel}
+                onNext={() => bookRef.current?.pageFlip()?.flipNext()}
+                onPrev={() => bookRef.current?.pageFlip()?.flipPrev()}
+              />
+            </div>
+          )}
+        </main>
+      </div>
+
+      <LibraryActionModal
+        theme={theme}
+        book={pendingBook}
+        onClose={() => setPendingBook(null)}
+        onSelectMode={(m) => { setReaderMode(m); setSelectedBook(pendingBook); setPendingBook(null); setView('reader'); setCurrentPage(0); }}
+        onSummarize={handleSummarize}
+        onApplySummary={(id, s) => setBooks(b => b.map(x => x && x.id === id ? { ...x, summary: s } : x))}
+        isSummarizing={isSummarizing}
+        onRemove={(id) => setBooks(b => b.filter(x => x && x.id !== id))}
+        onToggleFavorite={(id) => setBooks(b => b.map(x => x && x.id === id ? { ...x, isFavorite: !x.isFavorite } : x))}
+      />
+
+      {currentCategorizingIndex !== -1 && categorizingBooks[currentCategorizingIndex] && (
+        <CategorySelectionModal
+          isOpen={true}
+          bookName={categorizingBooks[currentCategorizingIndex].name}
+          coverUrl={categorizingBooks[currentCategorizingIndex].coverUrl}
+          onSelect={handleCategorySelection}
+          theme={theme}
+        />
+      )}
+
+      {derivedProfile && <AccountSettingsModal isOpen={isAccountSettingsOpen} onClose={() => setIsAccountSettingsOpen(false)} userProfile={derivedProfile} onSave={() => { }} theme={theme} />}
+    </div>
+  );
+};
+
+const App: React.FC = () => {
+  return (
+    <ErrorBoundary>
+      <FlipBookAppContent />
+    </ErrorBoundary>
+  );
+};
+
+export default App;

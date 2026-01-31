@@ -1,0 +1,54 @@
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-gold: #D4AF37;
+  --color-gold-hover: #C5A028;
+  --color-black: #000000;
+  --color-white: #ffffff;
+  --color-zinc-900: #18181b;
+}
+
+@layer base {
+  body {
+    @apply antialiased transition-colors duration-500;
+  }
+}
+
+/* Custom Scrollbar for "Digital" feel */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--color-gold);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--color-gold-hover);
+}
+
+.gold-text {
+  color: var(--color-gold);
+}
+
+.gold-border {
+  border-color: var(--color-gold);
+}
+
+.gold-bg {
+  background-color: var(--color-gold);
+}
+
+.glass-panel {
+  @apply backdrop-blur-xl border border-white/10 shadow-2xl;
+}

@@ -1,0 +1,63 @@
+
+export interface PDFDocumentProxy {
+  numPages: number;
+  getPage: (pageNumber: number) => Promise<PDFPageProxy>;
+  destroy: () => void;
+}
+
+export interface PDFPageProxy {
+  getViewport: (params: { scale: number }) => PDFPageViewport;
+  render: (params: {
+    canvasContext: CanvasRenderingContext2D | null;
+    viewport: PDFPageViewport;
+  }) => { promise: Promise<void> };
+}
+
+export interface PDFPageViewport {
+  width: number;
+  height: number;
+  scale: number;
+}
+
+export type Category = 'Professional' | 'Academic' | 'Personal' | 'Creative' | 'Uncategorized';
+
+export interface LibraryBook {
+  id: string;
+  name: string;
+  doc: any;
+  coverUrl: string;
+  totalPages: number;
+  summary?: string;
+  category?: Category;
+  isFavorite?: boolean;
+}
+
+export interface BookRef {
+  pageFlip: () => {
+    flipNext: () => void;
+    flipPrev: () => void;
+    turnToPage: (page: number) => void;
+    getCurrentPageIndex: () => number;
+    getPageCount: () => number;
+  } | null;
+}
+
+export interface UserProfile {
+  name: string;
+  user: string;
+  initials: string;
+  photoUrl?: string;
+}
+
+export type Theme = 'light' | 'dark';
+
+export type AppView = 'landing' | 'examples' | 'features' | 'library' | 'upload' | 'reader' | 'admin';
+
+export type VerificationStatus = 'pending' | 'verified' | 'expired' | 'error';
+
+export interface QRVerificationState {
+  email: string;
+  token: string;
+  status: VerificationStatus;
+  expiresAt: number;
+}
