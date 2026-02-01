@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { createRoot } from 'react-dom/client';
+import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import { AuthProvider } from './context/AuthContext';
 import * as pdfjsLib from 'pdfjs-dist';
@@ -46,8 +47,10 @@ if (rootElement) {
   const root = createRoot(rootElement);
   // Removed StrictMode to prevent double-initialization bugs with react-pageflip
   root.render(
-    <AuthProvider>
-      <App />
-    </AuthProvider>
+    <BrowserRouter>
+      <AuthProvider>
+        <App />
+      </AuthProvider>
+    </BrowserRouter>
   );
 }

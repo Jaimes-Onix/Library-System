@@ -230,8 +230,7 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
 
       if (data.session && data.user) {
         // Create profile if it doesn't exist (Trigger might handle this, but safe to do here)
-        const emailLower = qrVerification.email.toLowerCase();
-        const role = (emailLower === 'admin@flipbook.com' || emailLower === 'admin123@gmail.com') ? 'admin' : 'user';
+        const role = authType === 'admin' ? 'admin' : 'user';
 
         const { error: profileError } = await supabase
           .from('profiles')
@@ -434,22 +433,21 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
               </button>
             </form>
 
-            {authType !== 'admin' && (
-              <div className="mt-8 pt-8 border-t border-white/5 text-center">
-                <button
-                  onClick={() => {
-                    setMode(mode === 'signin' ? 'signup' : 'signin');
-                    setFormData({ user: '', email: '', password: '', name: '', studentId: '', gradeSection: '', course: '' });
-                  }}
-                  className="text-sm text-zinc-500 hover:text-white transition-colors"
-                >
-                  {mode === 'signin'
-                    ? "Don't have an account? "
-                    : "Already have an account? "}
-                  <span className="font-bold text-orange-500">{mode === 'signin' ? 'Sign up free' : 'Sign in'}</span>
-                </button>
-              </div>
-            )}
+            {/* User Type Toggle (Always Visible) */}
+            <div className="mt-8 pt-8 border-t border-white/5 text-center">
+              <button
+                onClick={() => {
+                  setMode(mode === 'signin' ? 'signup' : 'signin');
+                  setFormData({ user: '', email: '', password: '', name: '', studentId: '', gradeSection: '', course: '' });
+                }}
+                className="text-sm text-zinc-500 hover:text-white transition-colors"
+              >
+                {mode === 'signin'
+                  ? "Don't have an account? "
+                  : "Already have an account? "}
+                <span className="font-bold text-orange-500">{mode === 'signin' ? 'Sign up free' : 'Sign in'}</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>

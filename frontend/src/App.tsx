@@ -1,5 +1,7 @@
 
+
 import React, { Component, useState, useRef, useEffect, useMemo, ErrorInfo, ReactNode } from 'react';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { GoogleGenAI } from "@google/genai";
 import { BookOpen, RefreshCw, ShieldAlert, AlertCircle } from 'lucide-react';
 import Header from './components/Header';
@@ -22,6 +24,7 @@ import { Toaster } from './utils/toast';
 import { useAuth } from './context/AuthContext';
 import { supabase } from './lib/supabase';
 import AdminDashboard from './components/AdminDashboard';
+import AdminAuth from './components/AdminAuth';
 
 const generateSafeId = () => Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
 
@@ -528,9 +531,34 @@ const FlipBookAppContent: React.FC = () => {
 };
 
 const App: React.FC = () => {
+  const { user, isAdmin } = useAuth();
+
   return (
     <ErrorBoundary>
-      <FlipBookAppContent />
+      <Toaster />
+      <Routes>
+        {/* Admin Routes */}
+        <Route
+          path="/admin"
+          element={
+            user && isAdmin ?
+              <Navigate to="/admin/dashboard" replace /> :
+              <AdminAuth />
+          }
+        />
+
+        <Route
+          path="/admin/dashboard"
+          element={
+            user && isAdmin ?
+              <AdminDashboard theme="dark" onExit={() => window.location.href = '/'} /> :
+              <Navigate to="/admin" replace />
+          }
+        />
+
+        {/* Student Portal - All other routes */}
+        <Route path="/*" element={<FlipBookAppContent />} />
+      </Routes>
     </ErrorBoundary>
   );
 };
