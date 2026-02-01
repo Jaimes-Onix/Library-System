@@ -87,7 +87,7 @@ const Library: React.FC<LibraryProps> = ({
         <div className="flex items-center justify-between mt-16 mb-20">
           <div className="space-y-2">
             <h2 className={`text-6xl font-black tracking-tight ${isDark ? 'text-white' : 'text-[#1D1D1F]'}`}>
-              {getLibraryTitle()}
+              <span className="text-orange-500">Your</span> Library
             </h2>
             <div className="flex items-center gap-2.5 text-xs font-black uppercase tracking-[0.25em] opacity-40">
               <Sparkles size={14} className="text-orange-500" />

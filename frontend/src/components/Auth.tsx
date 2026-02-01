@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { BookOpen, ArrowRight, Mail, Lock, User, Loader2, ShieldCheck } from 'lucide-react';
+import { BookOpen, ArrowRight, Mail, Lock, User, Loader2, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { UserProfile, QRVerificationState } from '../types';
 import CodeVerification from './CodeVerification';
 import ErrorModal from './ErrorModal';
@@ -40,10 +40,11 @@ const getFriendlyErrorMessage = (error: any): string => {
   return message || 'An unexpected error occurred. Please try again.';
 };
 
-
 const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
   const { user } = useAuth();
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+  const [authType, setAuthType] = useState<'student' | 'admin'>('student');
+  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [qrVerification, setQrVerification] = useState<QRVerificationState | null>(null);
   const [errorModal, setErrorModal] = useState({ isOpen: false, message: '' });
@@ -229,7 +230,8 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
 
       if (data.session && data.user) {
         // Create profile if it doesn't exist (Trigger might handle this, but safe to do here)
-        const role = qrVerification.email === 'admin@flipbook.com' ? 'admin' : 'user';
+        const emailLower = qrVerification.email.toLowerCase();
+        const role = (emailLower === 'admin@flipbook.com' || emailLower === 'admin123@gmail.com') ? 'admin' : 'user';
 
         const { error: profileError } = await supabase
           .from('profiles')
@@ -277,20 +279,45 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
         theme="dark"
       />
 
-      <div className="fixed inset-0 flex items-center justify-center bg-[#F5F5F7] overflow-hidden">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-blue-400/10 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-400/10 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '2s' }} />
+      <div className="fixed inset-0 flex items-center justify-center bg-[#050505] overflow-hidden">
+        {/* Abstract Background Orbs */}
+        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-orange-600/20 rounded-full blur-[120px] animate-pulse" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-red-600/10 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '2s' }} />
+
+        {/* Noise Texture */}
+        <div className="absolute inset-0 opacity-[0.03] mix-blend-overlay pointer-events-none" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }} />
 
         <div className="relative w-full max-w-md px-6 animate-in fade-in zoom-in duration-700">
-          <div className="bg-white/70 backdrop-blur-3xl p-10 rounded-[40px] shadow-2xl shadow-black/5 border border-white/50">
+          <div className="bg-[#111111] backdrop-blur-2xl p-10 rounded-[32px] shadow-2xl shadow-black border border-white/10 relative overflow-hidden">
+            {/* Top Orange Line */}
+            <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-600 via-red-500 to-orange-600 opacity-80" />
+
             <div className="flex flex-col items-center text-center mb-10">
-              <div className="bg-black text-white p-4 rounded-3xl shadow-xl shadow-black/20 mb-6">
-                <BookOpen size={32} strokeWidth={2.5} />
+              <div className="bg-zinc-900 border border-white/10 text-orange-500 p-4 rounded-3xl shadow-xl mb-6 relative group">
+                <div className="absolute inset-0 bg-orange-500/20 blur-xl rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+                {authType === 'admin' ? <ShieldCheck size={32} strokeWidth={2.5} className="relative z-10" /> : <BookOpen size={32} strokeWidth={2.5} className="relative z-10" />}
               </div>
-              <h1 className="text-3xl font-bold tracking-tight text-gray-900 mb-2">
-                {mode === 'signin' ? 'Welcome Back' : 'Create Account'}
+
+              {/* User Type Toggle */}
+              <div className="flex p-1 bg-zinc-900/80 border border-white/5 rounded-full mb-8 w-full max-w-[240px]">
+                <button
+                  onClick={() => { setMode('signin'); setAuthType('student'); }}
+                  className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-full transition-all ${authType === 'student' ? 'bg-orange-600 text-white shadow-lg shadow-orange-900/40' : 'text-zinc-500 hover:text-zinc-300'}`}
+                >
+                  Student
+                </button>
+                <button
+                  onClick={() => { setMode('signin'); setAuthType('admin'); }}
+                  className={`flex-1 py-2 text-xs font-bold uppercase tracking-wider rounded-full transition-all ${authType === 'admin' ? 'bg-orange-600 text-white shadow-lg shadow-orange-900/40' : 'text-zinc-500 hover:text-zinc-300'}`}
+                >
+                  Admin
+                </button>
+              </div>
+
+              <h1 className="text-3xl font-black tracking-tighter text-white mb-2">
+                {authType === 'admin' ? 'Admin Access' : (mode === 'signin' ? 'Welcome Back' : 'Create Account')}
               </h1>
-              <p className="text-gray-500 text-sm">
+              <p className="text-zinc-500 text-sm font-medium">
                 {mode === 'signin'
                   ? 'Sign in to access your digital library'
                   : 'Join us to start curating your flipbooks'}
@@ -301,56 +328,56 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
               {mode === 'signup' && (
                 <>
                   <div className="relative group">
-                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" size={18} />
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-orange-500 transition-colors" size={18} />
                     <input
                       type="text"
                       required
                       placeholder="Full Name"
-                      className="w-full pl-12 pr-4 py-4 bg-gray-50/50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-medium"
+                      className="w-full pl-12 pr-4 py-4 bg-zinc-900/50 border border-white/5 rounded-2xl focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500/50 outline-none transition-all text-sm font-medium text-white placeholder-zinc-600"
                       value={formData.name}
                       onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                     />
                   </div>
                   <div className="relative group">
-                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" size={18} />
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-orange-500 transition-colors" size={18} />
                     <input
                       type="text"
                       required
                       placeholder="Student ID"
-                      className="w-full pl-12 pr-4 py-4 bg-gray-50/50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-medium"
+                      className="w-full pl-12 pr-4 py-4 bg-zinc-900/50 border border-white/5 rounded-2xl focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500/50 outline-none transition-all text-sm font-medium text-white placeholder-zinc-600"
                       value={formData.studentId}
                       onChange={(e) => setFormData({ ...formData, studentId: e.target.value })}
                     />
                   </div>
                   <div className="relative group">
-                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" size={18} />
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-orange-500 transition-colors" size={18} />
                     <input
                       type="text"
                       required
                       placeholder="Grade / Year & Section"
-                      className="w-full pl-12 pr-4 py-4 bg-gray-50/50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-medium"
+                      className="w-full pl-12 pr-4 py-4 bg-zinc-900/50 border border-white/5 rounded-2xl focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500/50 outline-none transition-all text-sm font-medium text-white placeholder-zinc-600"
                       value={formData.gradeSection}
                       onChange={(e) => setFormData({ ...formData, gradeSection: e.target.value })}
                     />
                   </div>
                   <div className="relative group">
-                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" size={18} />
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-orange-500 transition-colors" size={18} />
                     <input
                       type="text"
                       required
                       placeholder="Course"
-                      className="w-full pl-12 pr-4 py-4 bg-gray-50/50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-medium"
+                      className="w-full pl-12 pr-4 py-4 bg-zinc-900/50 border border-white/5 rounded-2xl focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500/50 outline-none transition-all text-sm font-medium text-white placeholder-zinc-600"
                       value={formData.course}
                       onChange={(e) => setFormData({ ...formData, course: e.target.value })}
                     />
                   </div>
                   <div className="relative group">
-                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" size={18} />
+                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-orange-500 transition-colors" size={18} />
                     <input
                       type="email"
                       required
                       placeholder="Email address"
-                      className="w-full pl-12 pr-4 py-4 bg-gray-50/50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-medium"
+                      className="w-full pl-12 pr-4 py-4 bg-zinc-900/50 border border-white/5 rounded-2xl focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500/50 outline-none transition-all text-sm font-medium text-white placeholder-zinc-600"
                       value={formData.email}
                       onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                     />
@@ -360,12 +387,12 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
 
               {mode === 'signin' && (
                 <div className="relative group">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" size={18} />
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-orange-500 transition-colors" size={18} />
                   <input
                     type="text"
                     required
                     placeholder="Username or Email"
-                    className="w-full pl-12 pr-4 py-4 bg-gray-50/50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-medium"
+                    className="w-full pl-12 pr-4 py-4 bg-zinc-900/50 border border-white/5 rounded-2xl focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500/50 outline-none transition-all text-sm font-medium text-white placeholder-zinc-600"
                     value={formData.user}
                     onChange={(e) => setFormData({ ...formData, user: e.target.value })}
                   />
@@ -373,21 +400,28 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
               )}
 
               <div className="relative group">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" size={18} />
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-orange-500 transition-colors" size={18} />
                 <input
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   required
                   placeholder="Password"
-                  className="w-full pl-12 pr-4 py-4 bg-gray-50/50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-medium"
+                  className="w-full pl-12 pr-12 py-4 bg-zinc-900/50 border border-white/5 rounded-2xl focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500/50 outline-none transition-all text-sm font-medium text-white placeholder-zinc-600"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white transition-colors"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
               </div>
 
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full flex items-center justify-center gap-2 py-4 bg-black text-white rounded-2xl font-bold transition-all active:scale-95 shadow-xl shadow-black/10 hover:bg-gray-800 disabled:opacity-50"
+                className="w-full flex items-center justify-center gap-2 py-4 bg-white text-black rounded-2xl font-black transition-all active:scale-95 hover:bg-orange-500 hover:text-white disabled:opacity-50 mt-4"
               >
                 {isLoading ? (
                   <Loader2 className="animate-spin" size={20} />
@@ -400,20 +434,22 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
               </button>
             </form>
 
-            <div className="mt-8 pt-8 border-t border-gray-100 text-center">
-              <button
-                onClick={() => {
-                  setMode(mode === 'signin' ? 'signup' : 'signin');
-                  setFormData({ user: '', email: '', password: '', name: '', studentId: '', gradeSection: '', course: '' });
-                }}
-                className="text-sm text-gray-500 hover:text-gray-900 transition-colors"
-              >
-                {mode === 'signin'
-                  ? "Don't have an account? "
-                  : "Already have an account? "}
-                <span className="font-bold text-black">{mode === 'signin' ? 'Sign up free' : 'Sign in'}</span>
-              </button>
-            </div>
+            {authType !== 'admin' && (
+              <div className="mt-8 pt-8 border-t border-white/5 text-center">
+                <button
+                  onClick={() => {
+                    setMode(mode === 'signin' ? 'signup' : 'signin');
+                    setFormData({ user: '', email: '', password: '', name: '', studentId: '', gradeSection: '', course: '' });
+                  }}
+                  className="text-sm text-zinc-500 hover:text-white transition-colors"
+                >
+                  {mode === 'signin'
+                    ? "Don't have an account? "
+                    : "Already have an account? "}
+                  <span className="font-bold text-orange-500">{mode === 'signin' ? 'Sign up free' : 'Sign in'}</span>
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

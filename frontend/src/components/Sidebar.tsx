@@ -10,7 +10,8 @@ import {
   User,
   Palette,
   Moon,
-  Sun
+  Sun,
+  ShieldCheck
 } from 'lucide-react';
 import { UserProfile, Theme } from '../types';
 
@@ -22,6 +23,7 @@ interface SidebarProps {
   onFilterChange: (filter: string) => void;
   onToggleTheme: () => void;
   onOpenSettings: () => void;
+  onOpenAdmin: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
@@ -31,7 +33,8 @@ const Sidebar: React.FC<SidebarProps> = ({
   activeFilter,
   onFilterChange,
   onToggleTheme,
-  onOpenSettings
+  onOpenSettings,
+  onOpenAdmin
 }) => {
   if (!userProfile) return null;
 
@@ -133,6 +136,16 @@ const Sidebar: React.FC<SidebarProps> = ({
           {isDark ? <Moon size={22} /> : <Sun size={22} />}
           {isDark ? 'Light Mode' : 'Dark Mode'}
         </button>
+
+        {userProfile.role === 'admin' && (
+          <button
+            onClick={onOpenAdmin}
+            className={`w-full flex items-center gap-4 px-6 py-5 rounded-[20px] text-base font-bold transition-all ${isDark ? 'bg-orange-600/10 text-orange-500 hover:bg-orange-600/20' : 'bg-orange-50 text-orange-600 hover:bg-orange-100'} mb-2 border border-orange-500/20`}
+          >
+            <ShieldCheck size={22} />
+            Admin Dashboard
+          </button>
+        )}
 
         <button
           onClick={onOpenSettings}

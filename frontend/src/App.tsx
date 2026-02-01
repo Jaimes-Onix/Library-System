@@ -419,7 +419,8 @@ const FlipBookAppContent: React.FC = () => {
             onFilterChange={setLibraryFilter}
             onLogout={signOut}
             onToggleTheme={toggleTheme}
-            onOpenSettings={() => isAdmin ? handleSetView('admin') : setIsAccountSettingsOpen(true)}
+            onOpenSettings={() => setIsAccountSettingsOpen(true)}
+            onOpenAdmin={() => handleSetView('admin')}
           />
         )}
 
