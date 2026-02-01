@@ -50,12 +50,17 @@ export interface UserProfile {
   created_at: string;
   user?: string; // Legacy field, optional now
   initials?: string; // Legacy field, optional now
-  photoUrl?: string;
+  photoUrl?: string; // Legacy field
+  student_id?: string;
+  grade_section?: string;
+  course?: string;
+  status?: 'active' | 'fines' | 'suspended';
+  photo_url?: string;
 }
 
 export type Theme = 'light' | 'dark';
 
-export type AppView = 'landing' | 'examples' | 'features' | 'library' | 'upload' | 'reader' | 'admin';
+export type AppView = 'landing' | 'examples' | 'features' | 'library' | 'upload' | 'reader' | 'admin' | 'settings';
 
 export type VerificationStatus = 'pending' | 'verified' | 'expired' | 'error';
 

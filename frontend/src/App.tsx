@@ -88,7 +88,7 @@ const FlipBookAppContent: React.FC = () => {
   const { user, profile, isAdmin, signOut } = useAuth();
   const [isShowingAuth, setIsShowingAuth] = useState(false);
 
-  const [theme, setTheme] = useState<Theme>('light');
+  const [theme, setTheme] = useState<Theme>('dark');
   const [view, setView] = useState<AppView | 'admin'>('landing');
 
   useEffect(() => {

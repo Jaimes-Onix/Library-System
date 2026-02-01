@@ -28,8 +28,8 @@ const ExamplesPage: React.FC<ExamplesPageProps> = ({ theme, onSelectSample }) =>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-12">
           {samples.map((sample, idx) => (
-            <div 
-              key={idx} 
+            <div
+              key={idx}
               className="group cursor-pointer"
               onClick={onSelectSample}
             >
@@ -40,7 +40,7 @@ const ExamplesPage: React.FC<ExamplesPageProps> = ({ theme, onSelectSample }) =>
                 <span className={`text-[10px] font-black uppercase tracking-widest py-1.5 px-3 rounded-full mb-3 inline-block ${isDark ? 'bg-white/5 text-gray-400' : 'bg-gray-100 text-gray-500'}`}>
                   {sample.category}
                 </span>
-                <h3 className="text-xl font-black mb-2 tracking-tight group-hover:text-blue-500 transition-colors">{sample.title}</h3>
+                <h3 className="text-xl font-black mb-2 tracking-tight group-hover:text-orange-500 transition-colors">{sample.title}</h3>
                 <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">{sample.pages} Pages</p>
               </div>
             </div>
@@ -48,11 +48,11 @@ const ExamplesPage: React.FC<ExamplesPageProps> = ({ theme, onSelectSample }) =>
         </div>
 
         <div className={`mt-40 p-16 rounded-[56px] flex flex-col items-center text-center ${isDark ? 'bg-zinc-950 border border-white/5' : 'bg-gray-50 border border-gray-100'}`}>
-           <Sparkles className="text-blue-500 mb-8" size={48} />
-           <h2 className="text-4xl font-black mb-6 tracking-tight">Perfect for Any Type of Content</h2>
-           <p className="text-lg font-medium text-gray-500 max-w-3xl leading-relaxed">
-             From academic materials and reports to portfolios and creative publications, Digital FlipBook transforms any document into an interactive reading experience that captures attention.
-           </p>
+          <Sparkles className="text-orange-500 mb-8" size={48} />
+          <h2 className="text-4xl font-black mb-6 tracking-tight">Perfect for Any Type of Content</h2>
+          <p className="text-lg font-medium text-gray-500 max-w-3xl leading-relaxed">
+            From academic materials and reports to portfolios and creative publications, Library System transforms any document into an interactive reading experience that captures attention.
+          </p>
         </div>
       </div>
     </div>

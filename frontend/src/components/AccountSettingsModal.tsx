@@ -153,7 +153,7 @@ const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
           <div className="space-y-6">
             <div className="space-y-2">
               <label className={`text-xs font-black uppercase tracking-widest ml-1 ${isDark ? 'text-zinc-400' : 'text-gray-500'}`}>
-                Display Name
+                Full Name
               </label>
               <div className="relative group">
                 <User className={`absolute left-4 top-1/2 -translate-y-1/2 transition-colors ${isDark ? 'text-zinc-600 group-focus-within:text-blue-500' : 'text-gray-400 group-focus-within:text-blue-500'}`} size={18} />
@@ -170,16 +170,66 @@ const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
               </div>
             </div>
 
-            <div className="space-y-2 opacity-50 cursor-not-allowed">
-              <label className={`text-xs font-black uppercase tracking-widest ml-1 ${isDark ? 'text-zinc-400' : 'text-gray-500'}`}>
-                Account ID
-              </label>
-              <input
-                type="text"
-                disabled
-                value={userProfile.user}
-                className={`w-full px-5 py-4 rounded-[20px] text-sm font-medium ${isDark ? 'bg-white/5 text-zinc-500' : 'bg-gray-50 text-gray-400'}`}
-              />
+            {/* READ-ONLY Student Information */}
+            <div className="grid grid-cols-2 gap-5">
+              <div className="space-y-2 col-span-2">
+                <label className={`text-xs font-black uppercase tracking-widest ml-1 ${isDark ? 'text-zinc-400' : 'text-gray-500'}`}>
+                  Student ID
+                </label>
+                <div className={`w-full px-5 py-4 rounded-[20px] text-sm font-bold border ${isDark ? 'bg-white/5 border-white/5 text-zinc-300' : 'bg-gray-50 border-gray-100 text-gray-700'}`}>
+                  {userProfile.student_id || "N/A"}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className={`text-xs font-black uppercase tracking-widest ml-1 ${isDark ? 'text-zinc-400' : 'text-gray-500'}`}>
+                  Grade / Section
+                </label>
+                <div className={`w-full px-5 py-4 rounded-[20px] text-sm font-medium border ${isDark ? 'bg-white/5 border-white/5 text-zinc-300' : 'bg-gray-50 border-gray-100 text-gray-700'}`}>
+                  {userProfile.grade_section || "N/A"}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <label className={`text-xs font-black uppercase tracking-widest ml-1 ${isDark ? 'text-zinc-400' : 'text-gray-500'}`}>
+                  Course
+                </label>
+                <div className={`w-full px-5 py-4 rounded-[20px] text-sm font-medium border ${isDark ? 'bg-white/5 border-white/5 text-zinc-300' : 'bg-gray-50 border-gray-100 text-gray-700'}`}>
+                  {userProfile.course || "N/A"}
+                </div>
+              </div>
+
+              <div className="space-y-2 col-span-2">
+                <label className={`text-xs font-black uppercase tracking-widest ml-1 ${isDark ? 'text-zinc-400' : 'text-gray-500'}`}>
+                  Account Status
+                </label>
+                <div className={`w-full px-5 py-4 rounded-[20px] flex items-center gap-3 border ${isDark ? 'bg-white/5 border-white/5' : 'bg-gray-50 border-gray-100'}`}>
+                  {(!userProfile.status || userProfile.status === 'active') && (
+                    <>
+                      <div className="w-3 h-3 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)] animate-pulse" />
+                      <span className="text-sm font-bold text-green-500">Active</span>
+                    </>
+                  )}
+                  {userProfile.status === 'fines' && (
+                    <>
+                      <div className="w-3 h-3 rounded-full bg-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.5)]" />
+                      <span className="text-sm font-bold text-yellow-500">With Fines</span>
+                    </>
+                  )}
+                  {userProfile.status === 'suspended' && (
+                    <>
+                      <div className="w-3 h-3 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]" />
+                      <span className="text-sm font-bold text-red-500">Suspended</span>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Hidden technical field, kept for debug if needed but pushed down */}
+            <div className="space-y-2 opacity-30 mt-4 hidden">
+              <label className="text-[10px] uppercase font-bold">System ID</label>
+              <input type="text" disabled value={userProfile.id} className="text-xs bg-transparent" />
             </div>
           </div>
         </div>

@@ -5,8 +5,8 @@
 @tailwind utilities;
 
 :root {
-  --color-gold: #D4AF37;
-  --color-gold-hover: #C5A028;
+  --color-gold: #FF5F1F;
+  --color-gold-hover: #E04F10;
   --color-black: #000000;
   --color-white: #ffffff;
   --color-zinc-900: #18181b;

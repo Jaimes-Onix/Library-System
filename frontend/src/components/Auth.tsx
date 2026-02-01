@@ -51,7 +51,10 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
     user: '',
     email: '',
     password: '',
-    name: ''
+    name: '',
+    studentId: '',
+    gradeSection: '',
+    course: ''
   });
 
   const getInitials = (name: string) => {
@@ -73,9 +76,23 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
       return false;
     }
 
-    if (mode === 'signup' && !formData.name.trim()) {
-      setErrorModal({ isOpen: true, message: 'Please enter your name' });
-      return false;
+    if (mode === 'signup') {
+      if (!formData.name.trim()) {
+        setErrorModal({ isOpen: true, message: 'Please enter your name' });
+        return false;
+      }
+      if (!formData.studentId.trim()) {
+        setErrorModal({ isOpen: true, message: 'Please enter your Student ID' });
+        return false;
+      }
+      if (!formData.gradeSection.trim()) {
+        setErrorModal({ isOpen: true, message: 'Please enter your Grade / Section' });
+        return false;
+      }
+      if (!formData.course.trim()) {
+        setErrorModal({ isOpen: true, message: 'Please enter your Course' });
+        return false;
+      }
     }
 
     // Validate email format (basic check)
@@ -143,6 +160,9 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
           options: {
             data: {
               full_name: formData.name,
+              student_id: formData.studentId,
+              grade_section: formData.gradeSection,
+              course: formData.course,
             }
           }
         });
@@ -178,6 +198,9 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
             role: 'user',
             name: formData.name,
             initials: getInitials(formData.name),
+            student_id: formData.studentId,
+            grade_section: formData.gradeSection,
+            course: formData.course,
             created_at: new Date().toISOString()
           });
         }
@@ -214,6 +237,10 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
             id: data.user.id,
             email: qrVerification.email,
             role: role,
+            student_id: formData.studentId || null,
+            grade_section: formData.gradeSection || null,
+            course: formData.course || null,
+            status: 'active',
             created_at: new Date().toISOString()
           });
 
@@ -285,6 +312,39 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
                     />
                   </div>
                   <div className="relative group">
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" size={18} />
+                    <input
+                      type="text"
+                      required
+                      placeholder="Student ID"
+                      className="w-full pl-12 pr-4 py-4 bg-gray-50/50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-medium"
+                      value={formData.studentId}
+                      onChange={(e) => setFormData({ ...formData, studentId: e.target.value })}
+                    />
+                  </div>
+                  <div className="relative group">
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" size={18} />
+                    <input
+                      type="text"
+                      required
+                      placeholder="Grade / Year & Section"
+                      className="w-full pl-12 pr-4 py-4 bg-gray-50/50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-medium"
+                      value={formData.gradeSection}
+                      onChange={(e) => setFormData({ ...formData, gradeSection: e.target.value })}
+                    />
+                  </div>
+                  <div className="relative group">
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" size={18} />
+                    <input
+                      type="text"
+                      required
+                      placeholder="Course"
+                      className="w-full pl-12 pr-4 py-4 bg-gray-50/50 border border-gray-200 rounded-2xl focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 outline-none transition-all text-sm font-medium"
+                      value={formData.course}
+                      onChange={(e) => setFormData({ ...formData, course: e.target.value })}
+                    />
+                  </div>
+                  <div className="relative group">
                     <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 group-focus-within:text-blue-500 transition-colors" size={18} />
                     <input
                       type="email"
@@ -344,7 +404,7 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
               <button
                 onClick={() => {
                   setMode(mode === 'signin' ? 'signup' : 'signin');
-                  setFormData({ user: '', email: '', password: '', name: '' });
+                  setFormData({ user: '', email: '', password: '', name: '', studentId: '', gradeSection: '', course: '' });
                 }}
                 className="text-sm text-gray-500 hover:text-gray-900 transition-colors"
               >

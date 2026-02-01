@@ -34,11 +34,11 @@ const CategoryTag: React.FC<{ category?: Category }> = ({ category }) => {
   );
 };
 
-const Library: React.FC<LibraryProps> = ({ 
-  books, 
-  onSelectBook, 
-  onAddNew, 
-  onRemoveBook, 
+const Library: React.FC<LibraryProps> = ({
+  books,
+  onSelectBook,
+  onAddNew,
+  onRemoveBook,
   onToggleFavorite,
   theme,
   activeFilter
@@ -78,8 +78,8 @@ const Library: React.FC<LibraryProps> = ({
     <div className="relative min-h-full w-full overflow-hidden">
       {/* Aesthetic Background Elements */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
-        <div className={`absolute top-[-10%] right-[-5%] w-[60%] h-[60%] rounded-full blur-[140px] opacity-20 animate-pulse transition-colors duration-1000 ${isDark ? 'bg-blue-900/40' : 'bg-blue-200'}`} style={{ animationDuration: '8s' }} />
-        <div className={`absolute bottom-[-10%] left-[-5%] w-[50%] h-[50%] rounded-full blur-[120px] opacity-15 animate-pulse transition-colors duration-1000 ${isDark ? 'bg-purple-900/30' : 'bg-purple-100'}`} style={{ animationDuration: '12s', animationDelay: '2s' }} />
+        <div className={`absolute top-[-10%] right-[-5%] w-[60%] h-[60%] rounded-full blur-[140px] opacity-20 animate-pulse transition-colors duration-1000 ${isDark ? 'bg-orange-900/40' : 'bg-orange-200'}`} style={{ animationDuration: '8s' }} />
+        <div className={`absolute bottom-[-10%] left-[-5%] w-[50%] h-[50%] rounded-full blur-[120px] opacity-15 animate-pulse transition-colors duration-1000 ${isDark ? 'bg-red-900/30' : 'bg-red-100'}`} style={{ animationDuration: '12s', animationDelay: '2s' }} />
         <div className="absolute inset-0 opacity-[0.03] mix-blend-overlay" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }} />
       </div>
 
@@ -90,14 +90,14 @@ const Library: React.FC<LibraryProps> = ({
               {getLibraryTitle()}
             </h2>
             <div className="flex items-center gap-2.5 text-xs font-black uppercase tracking-[0.25em] opacity-40">
-              <Sparkles size={14} className="text-blue-500" />
+              <Sparkles size={14} className="text-orange-500" />
               <span>{activeFilter === 'all' ? 'Curated Collection' : `Collection • ${activeFilter}`}</span>
             </div>
           </div>
-          
-          <button 
+
+          <button
             onClick={onAddNew}
-            className={`group relative flex items-center gap-3 px-10 py-5 rounded-[22px] transition-all active:scale-95 shadow-2xl text-base font-bold overflow-hidden ${isDark ? 'bg-blue-600 text-white hover:bg-blue-500' : 'bg-[#1D1D1F] text-white hover:bg-gray-800'}`}
+            className={`group relative flex items-center gap-3 px-10 py-5 rounded-[22px] transition-all active:scale-95 shadow-2xl text-base font-bold overflow-hidden ${isDark ? 'bg-orange-600 text-white hover:bg-orange-500' : 'bg-[#1D1D1F] text-white hover:bg-gray-800'}`}
           >
             <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/10 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
             <Plus size={24} className="relative z-10" />
@@ -108,14 +108,14 @@ const Library: React.FC<LibraryProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-14 gap-y-20">
           {books.map((book) => {
             if (!book || !book.id) return null;
-            
+
             const isOpening = openingBookId === book.id;
             const isConfirming = confirmingDeleteId === book.id;
             const isFav = book.isFavorite;
-            
+
             return (
-              <div 
-                key={book.id} 
+              <div
+                key={book.id}
                 className="group cursor-pointer relative animate-in fade-in slide-in-from-bottom-4 duration-500"
                 onClick={() => handleBookClick(book)}
               >
@@ -124,12 +124,12 @@ const Library: React.FC<LibraryProps> = ({
                   shadow-[0_20px_45px_-12px_rgba(0,0,0,0.2)] rounded-[10px] overflow-hidden border
                   ${isDark ? 'bg-zinc-800 border-white/5' : 'bg-white border-white/80 backdrop-blur-sm'}`}
                 >
-                  <img 
-                    src={book.coverUrl || ""} 
-                    alt={book.name || "Book Cover"} 
-                    className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110" 
+                  <img
+                    src={book.coverUrl || ""}
+                    alt={book.name || "Book Cover"}
+                    className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
                   />
-                  
+
                   <div className="absolute inset-y-0 left-0 w-[12px] bg-black/10 backdrop-blur-[2px] z-20 pointer-events-none" />
                   <div className="absolute inset-y-0 left-[12px] w-px bg-white/10 z-20 pointer-events-none" />
 
@@ -176,17 +176,17 @@ const Library: React.FC<LibraryProps> = ({
 
                   {isOpening && (
                     <div className="absolute inset-0 bg-white/10 backdrop-blur-md z-50 flex items-center justify-center">
-                      <div className="w-24 h-1.5 bg-blue-600 rounded-full animate-pulse shadow-[0_0_25px_rgba(37,99,235,0.7)]" />
+                      <div className="w-24 h-1.5 bg-orange-600 rounded-full animate-pulse shadow-[0_0_25px_rgba(249,115,22,0.7)]" />
                     </div>
                   )}
                 </div>
-                
+
                 <div className="px-2 space-y-3">
-                  <h3 className={`text-[17px] font-extrabold truncate leading-tight tracking-tight transition-all duration-300 ${isDark ? 'text-white' : 'text-[#1D1D1F] group-hover:text-blue-600 group-hover:translate-x-1.5'}`}>
+                  <h3 className={`text-[17px] font-extrabold truncate leading-tight tracking-tight transition-all duration-300 ${isDark ? 'text-white' : 'text-[#1D1D1F] group-hover:text-orange-600 group-hover:translate-x-1.5'}`}>
                     {(book.name || "Untitled").replace('.pdf', '')}
                   </h3>
                   <div className="flex flex-wrap items-center gap-3">
-                     <p className={`text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-zinc-500' : 'text-gray-500'}`}>
+                    <p className={`text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-zinc-500' : 'text-gray-500'}`}>
                       {book.totalPages || 0} PAGES
                     </p>
                     <CategoryTag category={book.category} />
@@ -197,14 +197,14 @@ const Library: React.FC<LibraryProps> = ({
           })}
 
           {books.length === 0 && (
-            <button 
+            <button
               onClick={onAddNew}
-              className={`group aspect-[3/4.2] border-2 border-dashed rounded-[20px] flex flex-col items-center justify-center gap-5 transition-all duration-500 shadow-inner ${isDark ? 'border-white/10 hover:border-blue-500 hover:bg-blue-500/5 text-zinc-600' : 'border-gray-200 hover:border-blue-400 hover:bg-white hover:shadow-2xl text-gray-400'}`}
+              className={`group aspect-[3/4.2] border-2 border-dashed rounded-[20px] flex flex-col items-center justify-center gap-5 transition-all duration-500 shadow-inner ${isDark ? 'border-white/10 hover:border-orange-500 hover:bg-orange-500/5 text-zinc-600' : 'border-gray-200 hover:border-orange-400 hover:bg-white hover:shadow-2xl text-gray-400'}`}
             >
-              <div className="p-7 rounded-full bg-gray-100 group-hover:bg-blue-100 transition-all duration-500 group-hover:scale-110">
-                <Plus size={40} strokeWidth={2} className="group-hover:text-blue-600" />
+              <div className="p-7 rounded-full bg-gray-100 group-hover:bg-orange-100 transition-all duration-500 group-hover:scale-110">
+                <Plus size={40} strokeWidth={2} className="group-hover:text-orange-600" />
               </div>
-              <span className="text-xs font-black uppercase tracking-widest group-hover:text-blue-600 transition-colors">Import PDF Library</span>
+              <span className="text-xs font-black uppercase tracking-widest group-hover:text-orange-600 transition-colors">Import PDF Library</span>
             </button>
           )}
         </div>

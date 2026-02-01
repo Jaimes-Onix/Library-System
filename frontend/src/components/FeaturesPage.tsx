@@ -25,24 +25,36 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ theme }) => {
 
   const detailedFeatures = [
     {
+      title: "Student Handbook",
+      subtitle: "Instant access to institutional guidelines.",
+      description: "A specialized digital guide for students. Easily search for rules, regulations, and academic policies. Always up-to-date and accessible from any device, ensuring students stay informed about their rights and responsibilities.",
+      icon: Library,
+      color: "bg-orange-600",
+      details: [
+        "Searchable Policy Database",
+        "Bookmark Critical Sections",
+        "Offline Access Support",
+        "Institutional Guidelines"
+      ]
+    },
+    {
       title: "Spatial 3D Flip Engine",
       subtitle: "The world's most immersive reading technology.",
-      description: "Our proprietary 3D rendering engine utilizes hardware-accelerated CSS3 Matrix3D transforms to deliver buttery-smooth 60fps page transitions. We don't just 'slide' images; we simulate real-world paper physics including variable-drag resistance, dynamic surface lighting, and sub-pixel edge anti-aliasing. Every flip feels heavy, tactile, and physically grounded.",
+      description: "Our proprietary 3D rendering engine utilizes hardware-accelerated CSS3 Matrix3D transforms to deliver buttery-smooth 60fps page transitions. We don't just 'slide' images; we simulate real-world paper physics including variable-drag resistance, dynamic surface lighting, and sub-pixel edge anti-aliasing.",
       icon: Zap,
-      color: "bg-blue-500",
+      color: "bg-red-500",
       details: [
         "60FPS Hardware Acceleration",
         "Variable Drag-and-Flip Physics",
         "Dynamic Real-time Shadow Mapping",
-        "Perspective-Correct 3D Warping"
       ]
     },
     {
       title: "Gemini-3 AI Librarian",
       subtitle: "Intelligent document understanding and curation.",
-      description: "Integrated directly with Google's Gemini-3 architecture, our AI scans every uploaded PDF to understand its core intent. It automatically generates sophisticated executive hooks, precise semantic tags, and intelligent category suggestions. Your library doesn't just store files; it understands them, making discovery instantaneous.",
+      description: "Integrated directly with Google's Gemini-3 architecture, our AI scans every uploaded PDF to understand its core intent. It automatically generates sophisticated executive hooks, precise semantic tags, and intelligent category suggestions.",
       icon: Sparkles,
-      color: "bg-purple-600",
+      color: "bg-amber-500",
       details: [
         "Automated Marketing Hooks",
         "Semantic Category Suggestion",
@@ -53,7 +65,7 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ theme }) => {
     {
       title: "Vector-Perfect Precision",
       subtitle: "Zero-loss rendering for every document.",
-      description: "Powered by an custom-tuned implementation of the PDF.js 4.4 kernel, our viewer preserves 100% of your document's fidelity. We support high-complexity vector paths, embedded CMYK profiles, and proprietary font character mapping (CMap). Whether at 100% or 500% zoom, your text remains razor-sharp and vector-perfect.",
+      description: "Powered by an custom-tuned implementation of the PDF.js 4.4 kernel, our viewer preserves 100% of your document's fidelity. We support high-complexity vector paths, embedded CMYK profiles, and proprietary font character mapping (CMap).",
       icon: Cpu,
       color: "bg-orange-500",
       details: [
@@ -66,9 +78,9 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ theme }) => {
     {
       title: "Adaptive Reading Viewports",
       subtitle: "Precision controls for focused consumption.",
-      description: "Switch seamlessly between Immersive Preview—perfect for presentations—and Manual Focus for deep work. Our interface adapts dynamically to your hardware, offering 500% precision zoom, single-page portrait spreads, or double-page landscape spreads. Includes an ambient color-match engine that adjusts the background to reduce eye-fatigue.",
+      description: "Switch seamlessly between Immersive Preview—perfect for presentations—and Manual Focus for deep work. Our interface adapts dynamically to your hardware, offering 500% precision zoom, single-page portrait spreads, or double-page landscape spreads.",
       icon: Eye,
-      color: "bg-red-500",
+      color: "bg-red-600",
       details: [
         "Precision 5X Optical Zoom",
         "Ambient Eye-Strain Reduction",
@@ -79,9 +91,9 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ theme }) => {
     {
       title: "Global Cloud Architecture",
       subtitle: "Persistent library access on every device.",
-      description: "Built on a resilient cloud-sync backbone, your curated shelf follows you wherever you go. Metadata, favorites, custom categories, and even your current reading position are synchronized in real-time. Start reading on your desktop workstation and pick up exactly where you left off on your tablet or mobile device.",
+      description: "Built on a resilient cloud-sync backbone, your curated shelf follows you wherever you go. Metadata, favorites, custom categories, and even your current reading position are synchronized in real-time.",
       icon: Cloud,
-      color: "bg-cyan-500",
+      color: "bg-amber-600",
       details: [
         "Real-time Position Sync",
         "Cross-Device Continuity",
@@ -92,9 +104,9 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ theme }) => {
     {
       title: "Smart Shelf Intelligence",
       subtitle: "Professional-grade organization system.",
-      description: "Transform a chaotic folder of PDFs into a curated digital bookshelf. Our Smart Cataloging system provides specialized shelves for Professional, Academic, Creative, and Personal works. Combined with an intelligent fuzzy-search index, finding the exact document you need takes milliseconds, not minutes.",
+      description: "Transform a chaotic folder of PDFs into a curated digital bookshelf. Our Smart Cataloging system provides specialized shelves for Professional, Academic, Creative, and Personal works.",
       icon: Library,
-      color: "bg-indigo-500",
+      color: "bg-orange-700",
       details: [
         "Fuzzy-logic Document Search",
         "Multi-Category Cataloging",
@@ -104,9 +116,9 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ theme }) => {
     {
       title: "Admin Super-Control",
       subtitle: "Total oversight with granular permissions.",
-      description: "Empower your organization with a dedicated Admin Dashboard. View every user's digital bookshelf, manage access roles, audit upload logs, and oversee the entire library from a single, beautiful command center. You prefer a 'God Mode'? You got it.",
+      description: "Empower your organization with a dedicated Admin Dashboard. View every user's digital bookshelf, manage access roles, audit upload logs, and oversee the entire library from a single, beautiful command center.",
       icon: Shield,
-      color: "bg-amber-500",
+      color: "bg-red-700",
       details: [
         "Global User Management",
         "Universal Bookshelf View",
@@ -121,10 +133,10 @@ const FeaturesPage: React.FC<FeaturesPageProps> = ({ theme }) => {
       <div className="max-w-[1400px] mx-auto px-10">
         <div className="pt-32 mb-40 text-center animate-in fade-in slide-in-from-bottom-8 duration-1000">
           <h1 className="text-7xl md:text-8xl font-black tracking-tight mb-8">
-            Engineered for <span className="text-amber-500">Excellence.</span>
+            Library <span className="text-orange-500">System.</span>
           </h1>
           <p className="text-xl md:text-2xl font-medium text-gray-500 max-w-3xl mx-auto leading-relaxed">
-            Merging high-fidelity physics with premium aesthetics. A digital experience worthy of your content.
+            A comprehensive digital reading and management platform for students and faculty.
           </p>
         </div>
 

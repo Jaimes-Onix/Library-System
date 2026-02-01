@@ -41,17 +41,14 @@ const Home: React.FC<HomeProps> = ({ theme, onStart, onViewExamples }) => {
               {/* Main Headline */}
               <div className="space-y-6">
                 <h1 className="text-6xl md:text-8xl font-black tracking-tight leading-[0.9] text-white">
-                  MOVING
+                  LIBRARY
                   <br />
                   <span className="bg-gradient-to-r from-orange-500 via-red-500 to-orange-600 bg-clip-text text-transparent">
-                    BOOKS
+                    SYSTEM
                   </span>
-                  <br />
-                  FORWARD
                 </h1>
                 <p className="text-xl md:text-2xl font-medium text-gray-400 max-w-xl leading-relaxed">
-                  Transform static PDFs into dynamic, interactive flipbooks.
-                  A modern reading experience for the digital age.
+                  Transforming the way you access knowledge. A modern, digital reading experience for students and faculty.
                 </p>
               </div>
 
