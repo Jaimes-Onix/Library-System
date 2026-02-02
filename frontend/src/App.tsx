@@ -388,7 +388,11 @@ const FlipBookAppContent: React.FC = () => {
       role: profile.role || 'user',
       created_at: profile.created_at,
       photoUrl: profile.avatar_url || profile.photo_url, // Check both common conventions
-      initials: (profile.name || profile.email || "U").substring(0, 2).toUpperCase()
+      initials: (profile.name || profile.email || "U").substring(0, 2).toUpperCase(),
+      student_id: profile.student_id,
+      grade_section: profile.grade_section,
+      course: profile.course,
+      status: profile.status
     }
     : (user ? {
       id: user.id,

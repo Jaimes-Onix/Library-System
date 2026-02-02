@@ -28,12 +28,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [profile, setProfile] = useState<any | null>(null);
     const [loading, setLoading] = useState(true);
 
-    const fetchProfile = useCallback(async (userId: string, mounted: boolean) => {
+    const fetchProfile = useCallback(async (currentUser: User, mounted: boolean) => {
         try {
             const { data, error } = await supabase
                 .from('profiles')
                 .select('*')
-                .eq('id', userId)
+                .eq('id', currentUser.id)
                 .maybeSingle();
 
             if (error) {
@@ -44,7 +44,59 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 return null;
             }
 
+            // AUTO-HEAL: If profile is missing but user exists, recreate it from metadata
+            if (!data) {
+                console.warn('[AUTH] Profile missing for existing user. Attempting auto-recovery...');
+                const metadata = currentUser.user_metadata || {};
+
+                const newProfile = {
+                    id: currentUser.id,
+                    email: currentUser.email,
+                    name: metadata.full_name || currentUser.email?.split('@')[0] || 'User',
+                    role: 'user',
+                    student_id: metadata.student_id || null,
+                    grade_section: metadata.grade_section || null,
+                    course: metadata.course || null,
+                    status: 'active',
+                    created_at: new Date().toISOString(),
+                    // Intentionally leaving photo_url null as we can't recover the uploaded file URL easily 
+                    // unless we store it in metadata (which we don't yet, but could in future)
+                };
+
+                const { error: insertError } = await supabase
+                    .from('profiles')
+                    .insert(newProfile);
+
+                if (!insertError) {
+                    console.log('[AUTH] Profile auto-recovered successfully');
+                    if (mounted) setProfile(newProfile);
+                    return newProfile;
+                } else {
+                    console.error('[AUTH] Profile recovery failed:', insertError);
+                    // ZOMBIE KILLER: If we can't recover the profile, the user likely doesn't exist anymore.
+                    // Force sign out to clean up the stale local session.
+                    if (mounted) {
+                        console.warn('[AUTH] valid session but dead user found. Force signing out...');
+                        await supabase.auth.signOut();
+                        // Force wipe all auth tokens
+                        Object.keys(localStorage).forEach(key => {
+                            if (key.startsWith('sb-') || key.includes('supabase')) {
+                                localStorage.removeItem(key);
+                            }
+                        });
+                        window.location.reload();
+                        return null;
+                    }
+                }
+            }
+
             if (mounted) {
+                console.log('[AUTH] ✅ Profile fetched successfully:', data);
+                console.log('[AUTH] Setting profile in state with:', {
+                    student_id: data?.student_id,
+                    grade_section: data?.grade_section,
+                    course: data?.course
+                });
                 setProfile(data ?? null);
             }
             return data;
@@ -76,17 +128,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }, 5000);
 
             try {
-                const { data: { session: initialSession } } = await supabase.auth.getSession();
+                // STRONG CHECK: Verify user against the server database
+                const { data: { user: validUser }, error: userError } = await supabase.auth.getUser();
+
                 if (!isMounted.current) return;
 
-                setSession(initialSession);
-                setUser(initialSession?.user ?? null);
-
-                if (initialSession?.user) {
-                    await fetchProfile(initialSession.user.id, isMounted.current);
-                } else {
+                if (userError || !validUser) {
+                    console.log('[AUTH] Invalid user on server. Clearing session.');
+                    // CRITICAL FIX: Explicitly sign out the Supabase client to clear the correct keys
+                    await supabase.auth.signOut();
+                    setSession(null);
+                    setUser(null);
                     setProfile(null);
                     setLoading(false);
+                    return;
+                }
+
+                // If user is valid, get the session object too (for tokens)
+                const { data: { session: validSession } } = await supabase.auth.getSession();
+                setSession(validSession);
+                setUser(validUser);
+
+                if (validUser) {
+                    await fetchProfile(validUser, isMounted.current);
                 }
             } catch (err: any) {
                 if (err.name !== 'AbortError' && !err.message?.includes('aborted')) {
@@ -104,7 +168,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 setSession(currentSession);
                 setUser(currentSession?.user ?? null);
                 if (currentSession?.user) {
-                    await fetchProfile(currentSession.user.id, isMounted.current);
+                    await fetchProfile(currentSession.user, isMounted.current);
                 } else if (event === 'SIGNED_OUT') {
                     setProfile(null);
                     setLoading(false);
@@ -118,15 +182,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, [fetchProfile]);
 
     const signOut = useCallback(async () => {
-        // INSTANT LOGOUT - Clear state immediately
-        setUser(null);
-        setSession(null);
-        setProfile(null);
-        setLoading(false);
-        localStorage.removeItem('supabase.auth.token');
+        try {
+            console.log('[AUTH] Requests SignOut...');
+            // 1. Race: Give Supabase 500ms to sign out cleanly, otherwise FORCE it.
+            await Promise.race([
+                supabase.auth.signOut(),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('SignOut Timeout')), 500))
+            ]);
+        } catch (error) {
+            console.warn('[AUTH] Force-killing session locally due to timeout/error', error);
+        } finally {
+            // 2. Clear all local state immediately
+            setUser(null);
+            setSession(null);
+            setProfile(null);
 
-        // Call Supabase in background (don't wait)
-        supabase.auth.signOut();
+            // 3. Clear persistence storage to prevent "Sticky Session"
+            Object.keys(localStorage).forEach(key => {
+                if (key.startsWith('sb-') || key.includes('supabase')) {
+                    localStorage.removeItem(key);
+                }
+            });
+
+            setLoading(false);
+            console.log('[AUTH] Local cleanup done. Reloading...');
+
+            // 4. Hard reload to ensure no memory leaks or stale state
+            window.location.href = '/';
+        }
     }, []);
 
     const contextValue = useMemo(() => ({
@@ -138,7 +221,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         signOut,
         refreshProfile: async () => {
             if (user) {
-                return await fetchProfile(user.id, true);
+                return await fetchProfile(user, true);
             }
             return null;
         }

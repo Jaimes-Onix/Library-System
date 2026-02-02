@@ -1,5 +1,6 @@
 
-import React, { useState, useRef } from 'react';
+
+import React, { useState, useRef, useEffect } from 'react';
 import { X, Camera, Save, User, Loader2, Check } from 'lucide-react';
 import { UserProfile, Theme } from '../types';
 import { supabase } from '../lib/supabase';
@@ -24,17 +25,28 @@ const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
   const [name, setName] = useState(userProfile.name);
   const [photoUrl, setPhotoUrl] = useState(userProfile.photoUrl || '');
   const [isSaving, setIsSaving] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isDark = theme === 'dark';
 
+  /* State for the actual file object to upload */
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+
+  // Sync state when userProfile changes (after context updates)
+  useEffect(() => {
+    setName(userProfile.name);
+    setPhotoUrl(userProfile.photoUrl || '');
+  }, [userProfile]);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setSelectedFile(file); // Store file for upload
       const reader = new FileReader();
       reader.onloadend = () => {
-        setPhotoUrl(reader.result as string);
+        setPhotoUrl(reader.result as string); // Preview
       };
       reader.readAsDataURL(file);
     }
@@ -53,11 +65,39 @@ const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Not authenticated");
 
+      let finalPhotoUrl = photoUrl;
+
+      // 1. Upload new photo if selected
+      if (selectedFile) {
+        console.log('[PROFILE SAVE] Uploading new photo...');
+        const fileExt = selectedFile.name.split('.').pop();
+        const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from('avatars')
+          .upload(fileName, selectedFile, { upsert: true });
+
+        if (uploadError) {
+          console.error('[PROFILE SAVE] Upload failed:', uploadError);
+          throw uploadError;
+        }
+
+        const { data: publicData } = supabase.storage
+          .from('avatars')
+          .getPublicUrl(fileName);
+
+        finalPhotoUrl = publicData.publicUrl;
+        console.log('[PROFILE SAVE] Photo uploaded, URL:', finalPhotoUrl);
+      }
+
       console.log('[PROFILE SAVE] Updating profile for user:', user.id);
+
+      // 2. Update Profile Record
       const { data, error } = await supabase
         .from('profiles')
         .update({
           name: name.trim(),
+          photo_url: finalPhotoUrl
         })
         .eq('id', user.id)
         .select();
@@ -69,25 +109,23 @@ const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
 
       console.log("[PROFILE SAVE] Profile updated successfully:", data);
 
-      // Update parent state
-      onSave({
-        ...userProfile,
-        name: name.trim(),
-        photoUrl: photoUrl,
-        initials: getInitials(name.trim())
-      });
-
+      // 3. Show Success Animation - Shorter delay
+      setIsSaving(false);
       setShowSuccess(true);
+
+      // 4. Close quickly - AuthContext will auto-refresh on next modal open
       setTimeout(() => {
         setShowSuccess(false);
         onClose();
-      }, 800);
+      }, 500);
+
+
     } catch (err: any) {
       console.error("[PROFILE SAVE] Failed:", err);
-      alert(`Save failed: ${err.message || "Unknown error"}`);
-      setIsSaving(false); // Reset spinner on error
-    } finally {
       setIsSaving(false);
+      if (err.message && !err.message.includes('abort')) {
+        alert(`Save failed: ${err.message}`);
+      }
     }
   };
 
@@ -170,6 +208,16 @@ const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
               </div>
             </div>
 
+            {/* Email (Read-only) */}
+            <div className="space-y-2">
+              <label className={`text-xs font-black uppercase tracking-widest ml-1 ${isDark ? 'text-zinc-400' : 'text-gray-500'}`}>
+                Email
+              </label>
+              <div className={`w-full px-5 py-4 rounded-[20px] text-sm font-bold border ${isDark ? 'bg-white/5 border-white/5 text-zinc-300' : 'bg-gray-50 border-gray-100 text-gray-700'}`}>
+                {userProfile.email}
+              </div>
+            </div>
+
             {/* READ-ONLY Student Information */}
             <div className="grid grid-cols-2 gap-5">
               <div className="space-y-2 col-span-2">
@@ -246,16 +294,20 @@ const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
           <button
             onClick={async () => {
               console.log('[MODAL] 🔴 Sign Out button clicked!');
+              setIsLoggingOut(true);
               try {
                 await onLogout();
                 console.log('[MODAL] ✅ onLogout() completed');
+                onClose(); // Close modal after successful logout
               } catch (error) {
                 console.error('[MODAL] ❌ Error during logout:', error);
+                setIsLoggingOut(false);
               }
             }}
-            className="flex-1 py-4 rounded-[20px] font-bold text-sm transition-all active:scale-95 bg-red-50 text-red-600 border border-red-100 hover:bg-red-100"
+            disabled={isLoggingOut}
+            className="flex-1 py-4 rounded-[20px] font-bold text-sm transition-all active:scale-95 bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Sign Out
+            {isLoggingOut ? 'Signing Out...' : 'Sign Out'}
           </button>
 
           <button

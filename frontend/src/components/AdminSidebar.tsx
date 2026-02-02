@@ -43,7 +43,7 @@ const AdminSidebar: React.FC<AdminSidebarProps> = ({
             {/* Brand */}
             <div className="p-8 flex items-center gap-3">
                 <div className="bg-orange-600 p-2 rounded-xl text-white">
-                    <Library size={24} strokeWidth={2.5} />
+                    <img src="/logo.png" alt="Logo" className="w-6 h-6 object-contain brightness-0 invert" />
                 </div>
                 <div>
                     <h1 className={`font-black tracking-tight text-lg ${isDark ? 'text-white' : 'text-gray-900'}`}>

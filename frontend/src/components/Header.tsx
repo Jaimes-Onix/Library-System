@@ -45,7 +45,7 @@ const Header: React.FC<HeaderProps> = ({
             <div
               className={`p-2 rounded-2xl shadow-lg transition-all duration-300 group-hover:scale-110 group-active:scale-95 ${isDark ? 'bg-white text-black' : 'bg-black text-white'}`}
             >
-              <BookOpen size={24} strokeWidth={2.5} />
+              <img src="/logo.png" alt="Logo" className={`w-6 h-6 object-contain ${isDark ? 'brightness-0' : 'brightness-0 invert'}`} />
             </div>
             <span className={`font-bold tracking-tight text-xl hidden sm:block transition-colors duration-300 ${isDark ? 'text-white group-hover:text-amber-400' : 'text-gray-900 group-hover:text-amber-600'}`}>
               Library System

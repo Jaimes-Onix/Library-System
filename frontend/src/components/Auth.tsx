@@ -41,7 +41,7 @@ const getFriendlyErrorMessage = (error: any): string => {
 };
 
 const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
-  const { user } = useAuth();
+  const { user, refreshProfile } = useAuth();
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [authType, setAuthType] = useState<'student' | 'admin'>('student');
   const [showPassword, setShowPassword] = useState(false);
@@ -55,7 +55,8 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
     name: '',
     studentId: '',
     gradeSection: '',
-    course: ''
+    course: '',
+    photo: null as File | null
   });
 
   const getInitials = (name: string) => {
@@ -112,6 +113,65 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
     }
 
     return true;
+  };
+
+  /* Helper to Create Profile & Upload Photo */
+  const createProfile = async (user: any, photoFile: File | null, formDataValues: any) => {
+    let photoUrl = null;
+
+    // Upload photo if provided
+    if (photoFile) {
+      try {
+        const fileExt = photoFile.name.split('.').pop();
+        const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+        const { error: uploadError } = await supabase.storage
+          .from('avatars') // Ensure this bucket exists/public
+          .upload(fileName, photoFile);
+
+        if (!uploadError) {
+          const { data: { publicUrl } } = supabase.storage
+            .from('avatars')
+            .getPublicUrl(fileName);
+          photoUrl = publicUrl;
+        } else {
+          console.warn("Photo upload warning:", uploadError);
+        }
+      } catch (e) {
+        console.warn("Photo upload exception:", e);
+      }
+    }
+
+    // Explicitly use the form data for maximum reliability
+    const role = authType === 'admin' ? 'admin' : 'user';
+
+    console.log("[AUTH] Creating profile for user:", user.id);
+    console.log("[AUTH] Profile Data:", {
+      name: formDataValues.name,
+      student_id: formDataValues.studentId,
+      grade: formDataValues.gradeSection,
+      course: formDataValues.course
+    });
+
+    const { error: profileError } = await supabase
+      .from('profiles')
+      .upsert({
+        id: user.id,
+        email: user.email,
+        name: formDataValues.name || user.email,
+        role: role,
+        student_id: formDataValues.studentId || null,
+        grade_section: formDataValues.gradeSection || null,
+        course: formDataValues.course || null,
+        status: 'active',
+        photo_url: photoUrl,
+        created_at: new Date().toISOString()
+      });
+
+    if (profileError) {
+      console.error("CRITICAL: Profile creation failed:", profileError);
+    } else {
+      console.log("[AUTH] ✅ Profile created successfully via Upsert");
+    }
   };
 
   /* New Handle Submit using Supabase Native Auth */
@@ -192,17 +252,25 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
           });
         } else if (data.session) {
           console.log('[AUTH] Sign up successful with immediate session');
+
+          // UPLOAD PHOTO & CREATE PROFILE IMMEDIATELY
+          await createProfile(data.user!, formData.photo, formData);
+
+          // REFRESH CONTEXT STATE TO GET THE NEW DATA
+          await refreshProfile();
+
           showSuccessToast('Account created successfully!');
           onAuthSuccess({
             id: data.user!.id,
             email: data.user!.email!,
-            role: 'user',
             name: formData.name,
+            role: 'user', // Default
+            created_at: new Date().toISOString(),
             initials: getInitials(formData.name),
+            photoUrl: undefined,
             student_id: formData.studentId,
             grade_section: formData.gradeSection,
-            course: formData.course,
-            created_at: new Date().toISOString()
+            course: formData.course
           });
         }
       }
@@ -229,27 +297,16 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
       if (error) throw error;
 
       if (data.session && data.user) {
-        // Create profile if it doesn't exist (Trigger might handle this, but safe to do here)
-        const role = authType === 'admin' ? 'admin' : 'user';
+        // UPLOAD PHOTO & CREATE PROFILE AFTER VERIFICATION
+        await createProfile(data.user, formData.photo, formData);
 
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .upsert({
-            id: data.user.id,
-            email: qrVerification.email,
-            role: role,
-            student_id: formData.studentId || null,
-            grade_section: formData.gradeSection || null,
-            course: formData.course || null,
-            status: 'active',
-            created_at: new Date().toISOString()
-          });
-
-        if (profileError) console.warn("Profile creation warning:", profileError);
+        // REFRESH CONTEXT STATE TO GET THE NEW DATA
+        await refreshProfile();
 
         showSuccessToast('Email verified successfully!');
         setQrVerification(null);
-        // AuthContext should pick up the session change
+        // AuthContext should pick up the session change via onAuthStateChange, 
+        // but refreshProfile ensures we have the data right NOW.
       }
     } catch (err: any) {
       console.error("Verification failed:", err);
@@ -326,6 +383,34 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
             <form onSubmit={handleSubmit} className="space-y-4">
               {mode === 'signup' && (
                 <>
+                  <div className="flex justify-center mb-4">
+                    <label className="cursor-pointer group relative">
+                      <div className={`w-24 h-24 rounded-full flex items-center justify-center border-2 border-dashed transition-all overflow-hidden ${formData.photo ? 'border-orange-500 p-0.5' : 'border-zinc-700 hover:border-orange-500 bg-zinc-900/50'}`}>
+                        {formData.photo ? (
+                          <img src={URL.createObjectURL(formData.photo)} alt="Profile Preview" className="w-full h-full object-cover rounded-full" />
+                        ) : (
+                          <div className="flex flex-col items-center gap-1 text-zinc-500 group-hover:text-orange-500 transition-colors">
+                            <User size={24} />
+                            <span className="text-[10px] font-bold uppercase">Upload</span>
+                          </div>
+                        )}
+                      </div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files[0]) {
+                            setFormData({ ...formData, photo: e.target.files[0] });
+                          }
+                        }}
+                      />
+                      <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                        <span className="text-[10px] font-bold text-white uppercase tracking-wider">Change</span>
+                      </div>
+                    </label>
+                  </div>
+
                   <div className="relative group">
                     <User className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-orange-500 transition-colors" size={18} />
                     <input
@@ -438,7 +523,7 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
               <button
                 onClick={() => {
                   setMode(mode === 'signin' ? 'signup' : 'signin');
-                  setFormData({ user: '', email: '', password: '', name: '', studentId: '', gradeSection: '', course: '' });
+                  setFormData({ user: '', email: '', password: '', name: '', studentId: '', gradeSection: '', course: '', photo: null });
                 }}
                 className="text-sm text-zinc-500 hover:text-white transition-colors"
               >

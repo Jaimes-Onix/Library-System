@@ -58,7 +58,11 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, onExit, onLogout
                     .single();
 
                 if (profile) {
-                    setAdminProfile(profile);
+                    // Map DB snake_case to frontend camelCase for the Modal
+                    setAdminProfile({
+                        ...profile,
+                        photoUrl: profile.photo_url || profile.avatar_url
+                    });
                 }
             }
         } catch (error) {
@@ -246,8 +250,8 @@ const AdminDashboard: React.FC<AdminDashboardProps> = ({ theme, onExit, onLogout
                             <button
                                 onClick={() => fetchStudentBooks(student.id)}
                                 className={`w-full py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-colors ${selectedStudentId === student.id
-                                        ? 'bg-orange-600 text-white'
-                                        : (isDark ? 'bg-white/5 text-white hover:bg-white/10' : 'bg-gray-100 text-black hover:bg-gray-200')
+                                    ? 'bg-orange-600 text-white'
+                                    : (isDark ? 'bg-white/5 text-white hover:bg-white/10' : 'bg-gray-100 text-black hover:bg-gray-200')
                                     }`}
                             >
                                 {selectedStudentId === student.id ? <CheckCircle size={14} /> : <BookOpen size={14} />}
