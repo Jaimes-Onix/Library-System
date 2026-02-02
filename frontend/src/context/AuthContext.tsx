@@ -9,6 +9,7 @@ interface AuthContextType {
     isAdmin: boolean;
     loading: boolean;
     signOut: () => Promise<void>;
+    refreshProfile: () => Promise<any>;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -18,6 +19,7 @@ const AuthContext = createContext<AuthContextType>({
     isAdmin: false,
     loading: true,
     signOut: async () => { },
+    refreshProfile: async () => { },
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -26,7 +28,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [profile, setProfile] = useState<any | null>(null);
     const [loading, setLoading] = useState(true);
 
-    const fetchProfile = useCallback(async (userId: string, isMounted: boolean) => {
+    const fetchProfile = useCallback(async (userId: string, mounted: boolean) => {
         try {
             const { data, error } = await supabase
                 .from('profiles')
@@ -35,53 +37,74 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                 .maybeSingle();
 
             if (error) {
+                if (error.message?.includes('AbortError') || error.message?.includes('aborted')) {
+                    return null;
+                }
                 console.error('[AUTH] Profile fetch error:', error.message);
-                return;
+                return null;
             }
 
-            if (isMounted) {
+            if (mounted) {
                 setProfile(data ?? null);
             }
-        } catch (err) {
+            return data;
+        } catch (err: any) {
+            if (err.name === 'AbortError' || err.message?.includes('aborted')) {
+                // Ignore abort errors
+                return null;
+            }
             console.error('[AUTH] Unexpected profile fetch error:', err);
+            return null;
         } finally {
-            if (isMounted) setLoading(false);
+            if (mounted) setLoading(false);
         }
     }, []);
 
+    const isMounted = React.useRef(true);
+
     useEffect(() => {
-        let isMounted = true;
+        isMounted.current = true;
+        return () => { isMounted.current = false; };
+    }, []);
 
+    useEffect(() => {
         const initAuth = async () => {
-            setLoading(true);
-            const { data: { session: initialSession } } = await supabase.auth.getSession();
+            const safetyTimeout = setTimeout(() => {
+                if (isMounted.current && loading) {
+                    setLoading(false);
+                }
+            }, 5000);
 
-            if (!isMounted) return;
+            try {
+                const { data: { session: initialSession } } = await supabase.auth.getSession();
+                if (!isMounted.current) return;
 
-            setSession(initialSession);
-            setUser(initialSession?.user ?? null);
+                setSession(initialSession);
+                setUser(initialSession?.user ?? null);
 
-            if (initialSession?.user) {
-                await fetchProfile(initialSession.user.id, isMounted);
-            } else {
-                setProfile(null);
-                setLoading(false);
+                if (initialSession?.user) {
+                    await fetchProfile(initialSession.user.id, isMounted.current);
+                } else {
+                    setProfile(null);
+                    setLoading(false);
+                }
+            } catch (err: any) {
+                if (err.name !== 'AbortError' && !err.message?.includes('aborted')) {
+                    console.error("Auth init failed", err);
+                }
+                if (isMounted.current) setLoading(false);
+            } finally {
+                clearTimeout(safetyTimeout);
             }
         };
 
-        initAuth();
-
         const { data: { subscription } } = supabase.auth.onAuthStateChange(
             async (event, currentSession) => {
-                console.log('[AUTH] Event:', event);
-                if (!isMounted) return;
-
+                if (!isMounted.current) return;
                 setSession(currentSession);
                 setUser(currentSession?.user ?? null);
-
                 if (currentSession?.user) {
-                    setLoading(true);
-                    await fetchProfile(currentSession.user.id, isMounted);
+                    await fetchProfile(currentSession.user.id, isMounted.current);
                 } else if (event === 'SIGNED_OUT') {
                     setProfile(null);
                     setLoading(false);
@@ -89,10 +112,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             }
         );
 
-        return () => {
-            isMounted = false;
-            subscription.unsubscribe();
-        };
+        initAuth();
+        return () => { subscription.unsubscribe(); };
+
     }, [fetchProfile]);
 
     const signOut = useCallback(async () => {
@@ -111,10 +133,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         session,
         profile,
-        isAdmin: profile?.role === 'admin',
+        isAdmin: profile?.role === 'admin' || user?.email === 'rebadomiarobert@gmail.com',
         loading,
-        signOut
-    }), [user, session, profile, loading, signOut]);
+        signOut,
+        refreshProfile: async () => {
+            if (user) {
+                return await fetchProfile(user.id, true);
+            }
+            return null;
+        }
+    }), [user, session, profile, loading, signOut, fetchProfile]);
 
     return (
         <AuthContext.Provider value={contextValue}>

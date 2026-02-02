@@ -3,7 +3,7 @@
 import React, { Component, useState, useRef, useEffect, useMemo, ErrorInfo, ReactNode } from 'react';
 import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { GoogleGenAI } from "@google/genai";
-import { BookOpen, RefreshCw, ShieldAlert, AlertCircle } from 'lucide-react';
+import { BookOpen, RefreshCw, ShieldAlert, AlertCircle, Loader2 } from 'lucide-react';
 import Header from './components/Header';
 import Upload from './components/Upload';
 import BookViewer from './components/BookViewer';
@@ -445,7 +445,7 @@ const FlipBookAppContent: React.FC = () => {
           )}
 
           {view === 'admin' && isAdmin && (
-            <AdminDashboard theme={theme} onExit={() => handleSetView('library')} />
+            <AdminDashboard theme={theme} onExit={() => handleSetView('library')} onLogout={signOut} />
           )}
 
           {view === 'upload' && (
@@ -531,7 +531,42 @@ const FlipBookAppContent: React.FC = () => {
 };
 
 const App: React.FC = () => {
-  const { user, isAdmin } = useAuth();
+  const { user, profile, isAdmin, loading, signOut } = useAuth();
+  const [showFailsafe, setShowFailsafe] = useState(false);
+
+  // Failsafe timer: if loading takes too long, allow manual bypass
+  useEffect(() => {
+    let timer: any;
+    if (loading) {
+      timer = setTimeout(() => setShowFailsafe(true), 3000);
+    } else {
+      setShowFailsafe(false);
+    }
+    return () => clearTimeout(timer);
+  }, [loading]);
+
+  // Allow manual bypass only if stuck
+  const [forceLoad, setForceLoad] = useState(false);
+
+  if (loading && !forceLoad) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-black text-white">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="animate-spin text-blue-500" size={48} />
+          <p className="text-zinc-500 font-medium animate-pulse">Initializing System...</p>
+
+          {showFailsafe && (
+            <button
+              onClick={() => setForceLoad(true)}
+              className="mt-4 text-xs text-red-500 hover:text-red-400 underline decoration-red-500/50 underline-offset-4"
+            >
+              Taking too long? Click to Force Entry
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <ErrorBoundary>
@@ -541,18 +576,33 @@ const App: React.FC = () => {
         <Route
           path="/admin"
           element={
-            user && isAdmin ?
-              <Navigate to="/admin/dashboard" replace /> :
+            user ? (
+              isAdmin ? <Navigate to="/admin/dashboard" replace /> :
+                /* User logged in but not admin */
+                <Navigate to="/admin/dashboard" replace />
+            ) : (
               <AdminAuth />
+            )
           }
         />
+
 
         <Route
           path="/admin/dashboard"
           element={
-            user && isAdmin ?
-              <AdminDashboard theme="dark" onExit={() => window.location.href = '/'} /> :
+            user ? (
+              isAdmin ?
+                <AdminDashboard theme="dark" onExit={() => window.location.href = '/'} onLogout={signOut} /> :
+                /* User logged in but profile might not be loaded yet, show loading */
+                <div className="flex h-screen w-full items-center justify-center bg-black text-white">
+                  <div className="text-center">
+                    <Loader2 className="animate-spin text-blue-500 mx-auto mb-4" size={32} />
+                    <p className="text-zinc-400">Verifying admin privileges...</p>
+                  </div>
+                </div>
+            ) : (
               <Navigate to="/admin" replace />
+            )
           }
         />
 

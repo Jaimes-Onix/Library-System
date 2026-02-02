@@ -133,7 +133,7 @@ const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
                   <span className="text-[10px] font-black uppercase tracking-widest">Change</span>
                 </div>
               </div>
-              <div className="absolute -bottom-2 -right-2 bg-blue-600 text-white p-2.5 rounded-2xl shadow-xl">
+              <div className="absolute -bottom-2 -right-2 bg-orange-600 text-white p-2.5 rounded-2xl shadow-xl">
                 <Camera size={18} />
               </div>
               <input
@@ -164,8 +164,8 @@ const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
                   placeholder="Your Name"
                   className={`w-full pl-12 pr-4 py-4 rounded-[20px] outline-none transition-all text-sm font-semibold
                     ${isDark
-                      ? 'bg-white/5 border border-white/5 text-white focus:bg-white/10 focus:ring-4 focus:ring-blue-500/10'
-                      : 'bg-gray-100 border border-transparent text-gray-900 focus:bg-white focus:ring-4 focus:ring-blue-500/5 focus:border-blue-500'}`}
+                      ? 'bg-white/5 border border-white/5 text-white focus:bg-white/10 focus:ring-4 focus:ring-orange-500/10'
+                      : 'bg-gray-100 border border-transparent text-gray-900 focus:bg-white focus:ring-4 focus:ring-orange-500/5 focus:border-orange-500'}`}
                 />
               </div>
             </div>
@@ -264,7 +264,7 @@ const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
             className={`flex-[2] flex items-center justify-center gap-3 py-4 rounded-[20px] font-bold text-sm transition-all active:scale-95 shadow-xl disabled:opacity-70
               ${showSuccess
                 ? 'bg-green-500 text-white shadow-green-900/20'
-                : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-900/40'}`}
+                : 'bg-orange-600 hover:bg-orange-500 text-white shadow-orange-900/40'}`}
           >
             {isSaving ? (
               <Loader2 size={20} className="animate-spin" />

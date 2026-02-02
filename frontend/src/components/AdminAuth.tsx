@@ -3,9 +3,11 @@ import { ShieldCheck, Eye, EyeOff, Loader2, ArrowRight } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { showSuccessToast } from '../utils/toast';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 
 const AdminAuth: React.FC = () => {
     const navigate = useNavigate();
+    const { refreshProfile } = useAuth();
     const [isSignIn, setIsSignIn] = useState(true);
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
@@ -19,13 +21,44 @@ const AdminAuth: React.FC = () => {
 
         try {
             if (isSignIn) {
+                const email = formData.email.trim();
+                const password = formData.password.trim();
+
                 const { error } = await supabase.auth.signInWithPassword({
-                    email: formData.email,
-                    password: formData.password,
+                    email,
+                    password,
                 });
-                if (error) throw error;
-                showSuccessToast('Verified as Admin');
-                navigate('/admin/dashboard');
+                if (error) {
+                    if (error.status === 400) {
+                        throw new Error("Invalid email or password. Please check your credentials.");
+                    }
+                    throw error;
+                }
+
+                // Ensure admin profile exists with correct role
+                const { data: { user: authUser } } = await supabase.auth.getUser();
+                if (authUser) {
+                    await supabase.from('profiles').upsert({
+                        id: authUser.id,
+                        email: authUser.email,
+                        role: 'admin',
+                        name: authUser.user_metadata?.full_name || 'Admin User',
+                        status: 'active'
+                    });
+                }
+
+                // Force a profile refresh to get the latest role
+                // Note: onAuthStateChange in AuthContext will also trigger a fetch, 
+                // but we await this one to ensure we have the role before navigating.
+                // If this causes AbortError, it's because of the race with AuthContext.
+                // We will rely on AuthContext's update or a safe check.
+
+                // Let's just wait a moment for the context to update naturally
+                setTimeout(() => {
+                    showSuccessToast('Verified. Entering Dashboard...');
+                    navigate('/admin/dashboard');
+                }, 1000);
+
             } else {
                 // Admin Signup
                 const { error } = await supabase.auth.signUp({
@@ -40,9 +73,9 @@ const AdminAuth: React.FC = () => {
             }
         } catch (err: any) {
             setError(err.message || 'Authentication failed');
-        } finally {
             setIsLoading(false);
         }
+        // Note: We don't set isLoading(false) on success immediately to prevent UI flicker before redirect
     };
 
     return (

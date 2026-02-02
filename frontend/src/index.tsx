@@ -16,7 +16,19 @@ try {
   }
 } catch (e) {
   console.error("PDF.js worker initialization warning:", e);
+  console.error("PDF.js worker initialization warning:", e);
 }
+
+// Suppress benign "AbortError" from Supabase/React Strict Mode
+window.addEventListener('unhandledrejection', (event) => {
+  if (
+    event.reason?.name === 'AbortError' ||
+    event.reason?.message?.includes('aborted')
+  ) {
+    // Prevent the red error in console
+    event.preventDefault();
+  }
+});
 
 // Global error handler to provide feedback instead of a blank screen
 window.onerror = (message, source, lineno, colno, error) => {
