@@ -3,10 +3,12 @@ import { BookOpen, ArrowRight, Mail, Lock, User, Loader2, ShieldCheck, Eye, EyeO
 import { UserProfile, QRVerificationState } from '../types';
 import CodeVerification from './CodeVerification';
 import ErrorModal from './ErrorModal';
+import VantaFog from './VantaFog';
 import { showSuccessToast, showInfoToast } from '../utils/toast';
 
 interface AuthProps {
   onAuthSuccess: (profile: UserProfile) => void;
+  onBack?: () => void;
 }
 
 import { supabase } from '../lib/supabase';
@@ -40,7 +42,7 @@ const getFriendlyErrorMessage = (error: any): string => {
   return message || 'An unexpected error occurred. Please try again.';
 };
 
-const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
+const Auth: React.FC<AuthProps> = ({ onAuthSuccess, onBack }) => {
   const { user, refreshProfile } = useAuth();
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [authType, setAuthType] = useState<'student' | 'admin'>('student');
@@ -336,15 +338,21 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess }) => {
       />
 
       <div className="fixed inset-0 flex items-center justify-center bg-[#050505] overflow-hidden">
-        {/* Abstract Background Orbs */}
-        <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-orange-600/20 rounded-full blur-[120px] animate-pulse" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-red-600/10 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '2s' }} />
+        {/* Vanta FOG Background */}
+        <VantaFog />
 
-        {/* Noise Texture */}
-        <div className="absolute inset-0 opacity-[0.03] mix-blend-overlay pointer-events-none" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }} />
+        {/* Back Button */}
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="absolute top-6 right-6 z-20 px-4 py-2 text-sm font-medium text-zinc-500 hover:text-white bg-white/5 hover:bg-white/10 border border-white/10 rounded-full backdrop-blur-md transition-all"
+          >
+            ← Back
+          </button>
+        )}
 
-        <div className="relative w-full max-w-md px-6 animate-in fade-in zoom-in duration-700">
-          <div className="bg-[#111111] backdrop-blur-2xl p-10 rounded-[32px] shadow-2xl shadow-black border border-white/10 relative overflow-hidden">
+        <div className="relative w-full max-w-md px-6 animate-in fade-in zoom-in duration-700 z-10">
+          <div className="bg-[#111111]/80 backdrop-blur-2xl p-10 rounded-[32px] shadow-2xl shadow-black border border-white/10 relative overflow-hidden">
             {/* Top Orange Line */}
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-600 via-red-500 to-orange-600 opacity-80" />
 

@@ -25,6 +25,7 @@ import { useAuth } from './context/AuthContext';
 import { supabase } from './lib/supabase';
 import AdminDashboard from './components/AdminDashboard';
 import AdminAuth from './components/AdminAuth';
+import VantaFog from './components/VantaFog';
 
 const generateSafeId = () => Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
 
@@ -375,7 +376,7 @@ const FlipBookAppContent: React.FC = () => {
     loadSelectedBookDoc();
   }, [view, selectedBook?.id]);
 
-  if (isShowingAuth) return <Auth onAuthSuccess={() => setIsShowingAuth(false)} />;
+  if (isShowingAuth) return <Auth onAuthSuccess={() => setIsShowingAuth(false)} onBack={() => setIsShowingAuth(false)} />;
 
   const isWebsiteView = ['landing', 'examples', 'features'].includes(view);
 
@@ -404,7 +405,9 @@ const FlipBookAppContent: React.FC = () => {
     } : null);
 
   return (
-    <div className={`flex flex-col min-h-screen w-full transition-colors duration-700 selection:bg-blue-500 selection:text-white ${theme === 'dark' ? 'bg-black text-white' : 'bg-white text-gray-900'}`}>
+    <div className={`flex flex-col min-h-screen w-full transition-colors duration-700 selection:bg-blue-500 selection:text-white relative ${theme === 'dark' ? 'bg-black text-white' : 'bg-white text-gray-900'}`}>
+      {theme === 'dark' && <VantaFog />}
+      <div className="relative z-10 flex flex-col min-h-screen w-full">
       <Toaster />
       <Header
         view={view}
@@ -530,6 +533,7 @@ const FlipBookAppContent: React.FC = () => {
       )}
 
       {derivedProfile && <AccountSettingsModal isOpen={isAccountSettingsOpen} onClose={() => setIsAccountSettingsOpen(false)} userProfile={derivedProfile} onSave={() => setIsAccountSettingsOpen(false)} theme={theme} onLogout={signOut} />}
+      </div>
     </div>
   );
 };

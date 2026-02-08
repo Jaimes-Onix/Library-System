@@ -3,12 +3,10 @@ import { ShieldCheck, Eye, EyeOff, Loader2, ArrowRight } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { showSuccessToast } from '../utils/toast';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import VantaFog from './VantaFog';
 
 const AdminAuth: React.FC = () => {
     const navigate = useNavigate();
-    const { refreshProfile } = useAuth();
-    const [isSignIn, setIsSignIn] = useState(true);
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [formData, setFormData] = useState({ email: '', password: '' });
@@ -20,57 +18,36 @@ const AdminAuth: React.FC = () => {
         setError('');
 
         try {
-            if (isSignIn) {
-                const email = formData.email.trim();
-                const password = formData.password.trim();
+            const email = formData.email.trim();
+            const password = formData.password.trim();
 
-                const { error } = await supabase.auth.signInWithPassword({
-                    email,
-                    password,
-                });
-                if (error) {
-                    if (error.status === 400) {
-                        throw new Error("Invalid email or password. Please check your credentials.");
-                    }
-                    throw error;
+            const { error } = await supabase.auth.signInWithPassword({
+                email,
+                password,
+            });
+            if (error) {
+                if (error.status === 400) {
+                    throw new Error("Invalid email or password. Please check your credentials.");
                 }
-
-                // Ensure admin profile exists with correct role
-                const { data: { user: authUser } } = await supabase.auth.getUser();
-                if (authUser) {
-                    await supabase.from('profiles').upsert({
-                        id: authUser.id,
-                        email: authUser.email,
-                        role: 'admin',
-                        name: authUser.user_metadata?.full_name || 'Admin User',
-                        status: 'active'
-                    });
-                }
-
-                // Force a profile refresh to get the latest role
-                // Note: onAuthStateChange in AuthContext will also trigger a fetch, 
-                // but we await this one to ensure we have the role before navigating.
-                // If this causes AbortError, it's because of the race with AuthContext.
-                // We will rely on AuthContext's update or a safe check.
-
-                // Let's just wait a moment for the context to update naturally
-                setTimeout(() => {
-                    showSuccessToast('Verified. Entering Dashboard...');
-                    navigate('/admin/dashboard');
-                }, 1000);
-
-            } else {
-                // Admin Signup
-                const { error } = await supabase.auth.signUp({
-                    email: formData.email,
-                    password: formData.password,
-                    options: { data: { full_name: 'Admin User' } }
-                });
-                if (error) throw error;
-
-                alert('Confirmation email sent! Please verify your email then sign in.');
-                setIsSignIn(true);
+                throw error;
             }
+
+            // Ensure admin profile exists with correct role
+            const { data: { user: authUser } } = await supabase.auth.getUser();
+            if (authUser) {
+                await supabase.from('profiles').upsert({
+                    id: authUser.id,
+                    email: authUser.email,
+                    role: 'admin',
+                    name: authUser.user_metadata?.full_name || 'Admin User',
+                    status: 'active'
+                });
+            }
+
+            setTimeout(() => {
+                showSuccessToast('Verified. Entering Dashboard...');
+                navigate('/admin/dashboard');
+            }, 1000);
         } catch (err: any) {
             setError(err.message || 'Authentication failed');
             setIsLoading(false);
@@ -80,11 +57,10 @@ const AdminAuth: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-[#050505] flex items-center justify-center p-4 relative overflow-hidden">
-            {/* Abstract Background Orbs */}
-            <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-orange-600/20 rounded-full blur-[120px] animate-pulse" />
-            <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-red-600/10 rounded-full blur-[120px] animate-pulse" style={{ animationDelay: '2s' }} />
+            {/* Vanta FOG Background */}
+            <VantaFog />
 
-            <div className="w-full max-w-md bg-[#111] p-10 rounded-[32px] border border-white/10 shadow-2xl relative z-10">
+            <div className="w-full max-w-md bg-[#111]/80 backdrop-blur-xl p-10 rounded-[32px] border border-white/10 shadow-2xl relative z-10">
                 <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-600 via-red-500 to-orange-600 opacity-80" />
 
                 <div className="text-center mb-10">
@@ -144,7 +120,7 @@ const AdminAuth: React.FC = () => {
                     >
                         {isLoading ? <Loader2 className="animate-spin" size={20} /> : (
                             <>
-                                {isSignIn ? 'Enter Dashboard' : 'Create Admin Account'}
+                                Enter Dashboard
                                 <ArrowRight size={18} />
                             </>
                         )}
@@ -152,16 +128,6 @@ const AdminAuth: React.FC = () => {
                 </form>
 
                 <div className="mt-8 pt-8 border-t border-white/5 text-center">
-                    <button
-                        onClick={() => setIsSignIn(!isSignIn)}
-                        className="text-sm text-zinc-500 hover:text-white transition-colors"
-                    >
-                        {isSignIn ? "Need an admin account? " : "Already verified? "}
-                        <span className="font-bold text-orange-500">{isSignIn ? 'Sign up' : 'Sign in'}</span>
-                    </button>
-                </div>
-
-                <div className="mt-6 text-center">
                     <button
                         onClick={() => navigate('/')}
                         className="text-xs text-zinc-600 hover:text-zinc-400 transition-colors"

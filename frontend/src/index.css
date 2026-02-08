@@ -52,3 +52,46 @@
 .glass-panel {
   @apply backdrop-blur-xl border border-white/10 shadow-2xl;
 }
+
+/* Scroll Reveal Animations */
+[data-reveal] {
+  opacity: 0;
+  transform: translateY(40px);
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+[data-reveal="fade-up"].revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+[data-reveal="fade-left"] {
+  opacity: 0;
+  transform: translateX(-40px);
+}
+
+[data-reveal="fade-left"].revealed {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+[data-reveal="fade-right"] {
+  opacity: 0;
+  transform: translateX(40px);
+}
+
+[data-reveal="fade-right"].revealed {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+[data-reveal="zoom-in"] {
+  opacity: 0;
+  transform: scale(0.9);
+}
+
+[data-reveal="zoom-in"].revealed {
+  opacity: 1;
+  transform: scale(1);
+}
