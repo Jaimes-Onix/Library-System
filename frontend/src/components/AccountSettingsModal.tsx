@@ -3,7 +3,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { X, Camera, Save, User, Loader2, Check } from 'lucide-react';
 import { UserProfile, Theme } from '../types';
-import { supabase } from '../lib/supabase';
 
 interface AccountSettingsModalProps {
   isOpen: boolean;
@@ -23,30 +22,27 @@ const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
   onLogout
 }) => {
   const [name, setName] = useState(userProfile.name);
-  const [photoUrl, setPhotoUrl] = useState(userProfile.photoUrl || '');
+  const [photoUrl, setPhotoUrl] = useState(userProfile.photoUrl || userProfile.photo_url || '');
   const [isSaving, setIsSaving] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [showSuccess, setShowSuccess] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isDark = theme === 'dark';
-
-  /* State for the actual file object to upload */
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
-  // Sync state when userProfile changes (after context updates)
   useEffect(() => {
     setName(userProfile.name);
-    setPhotoUrl(userProfile.photoUrl || '');
+    setPhotoUrl(userProfile.photoUrl || userProfile.photo_url || '');
   }, [userProfile]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setSelectedFile(file); // Store file for upload
+      setSelectedFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
-        setPhotoUrl(reader.result as string); // Preview
+        setPhotoUrl(reader.result as string);
       };
       reader.readAsDataURL(file);
     }
@@ -60,73 +56,25 @@ const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
     if (!name.trim()) return alert("Name cannot be empty");
 
     setIsSaving(true);
-    try {
-      console.log('[PROFILE SAVE] Starting profile update...');
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not authenticated");
 
-      let finalPhotoUrl = photoUrl;
-
-      // 1. Upload new photo if selected
-      if (selectedFile) {
-        console.log('[PROFILE SAVE] Uploading new photo...');
-        const fileExt = selectedFile.name.split('.').pop();
-        const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('avatars')
-          .upload(fileName, selectedFile, { upsert: true });
-
-        if (uploadError) {
-          console.error('[PROFILE SAVE] Upload failed:', uploadError);
-          throw uploadError;
-        }
-
-        const { data: publicData } = supabase.storage
-          .from('avatars')
-          .getPublicUrl(fileName);
-
-        finalPhotoUrl = publicData.publicUrl;
-        console.log('[PROFILE SAVE] Photo uploaded, URL:', finalPhotoUrl);
-      }
-
-      console.log('[PROFILE SAVE] Updating profile for user:', user.id);
-
-      // 2. Update Profile Record
-      const { data, error } = await supabase
-        .from('profiles')
-        .update({
-          name: name.trim(),
-          photo_url: finalPhotoUrl
-        })
-        .eq('id', user.id)
-        .select();
-
-      if (error) {
-        console.error("[PROFILE SAVE] Supabase error:", error);
-        throw error;
-      }
-
-      console.log("[PROFILE SAVE] Profile updated successfully:", data);
-
-      // 3. Show Success Animation - Shorter delay
+    // Placeholder for future database integration
+    setTimeout(() => {
+      const updatedProfile: UserProfile = {
+        ...userProfile,
+        name: name.trim(),
+        photoUrl: photoUrl,
+        photo_url: photoUrl,
+      };
+      onSave(updatedProfile);
       setIsSaving(false);
       setShowSuccess(true);
+      setSelectedFile(null);
 
-      // 4. Close quickly - AuthContext will auto-refresh on next modal open
       setTimeout(() => {
         setShowSuccess(false);
         onClose();
       }, 500);
-
-
-    } catch (err: any) {
-      console.error("[PROFILE SAVE] Failed:", err);
-      setIsSaving(false);
-      if (err.message && !err.message.includes('abort')) {
-        alert(`Save failed: ${err.message}`);
-      }
-    }
+    }, 500);
   };
 
   if (!isOpen) return null;
@@ -137,7 +85,6 @@ const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
         className={`w-full max-w-md overflow-hidden rounded-[40px] border shadow-2xl transition-all duration-500 animate-in zoom-in slide-in-from-bottom-8
           ${isDark ? 'bg-zinc-900/90 border-white/10' : 'bg-white/90 border-white/40'}`}
       >
-        {/* Header */}
         <div className={`flex items-center justify-between px-8 py-6 border-b ${isDark ? 'border-white/10' : 'border-gray-100'}`}>
           <h2 className={`text-xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
             Account Settings
@@ -151,7 +98,6 @@ const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
         </div>
 
         <div className="p-8 space-y-8">
-          {/* Avatar Section */}
           <div className="flex flex-col items-center">
             <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
               <div className={`w-32 h-32 rounded-[40px] overflow-hidden border-4 shadow-2xl transition-all duration-500 group-hover:scale-105 group-active:scale-95
@@ -165,7 +111,6 @@ const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
                   </div>
                 )}
 
-                {/* Overlay on hover */}
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-white">
                   <Camera size={24} className="mb-1" />
                   <span className="text-[10px] font-black uppercase tracking-widest">Change</span>
@@ -187,7 +132,6 @@ const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
             </p>
           </div>
 
-          {/* Form Fields */}
           <div className="space-y-6">
             <div className="space-y-2">
               <label className={`text-xs font-black uppercase tracking-widest ml-1 ${isDark ? 'text-zinc-400' : 'text-gray-500'}`}>
@@ -208,7 +152,6 @@ const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
               </div>
             </div>
 
-            {/* Email (Read-only) */}
             <div className="space-y-2">
               <label className={`text-xs font-black uppercase tracking-widest ml-1 ${isDark ? 'text-zinc-400' : 'text-gray-500'}`}>
                 Email
@@ -217,72 +160,9 @@ const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
                 {userProfile.email}
               </div>
             </div>
-
-            {/* READ-ONLY Student Information */}
-            <div className="grid grid-cols-2 gap-5">
-              <div className="space-y-2 col-span-2">
-                <label className={`text-xs font-black uppercase tracking-widest ml-1 ${isDark ? 'text-zinc-400' : 'text-gray-500'}`}>
-                  Student ID
-                </label>
-                <div className={`w-full px-5 py-4 rounded-[20px] text-sm font-bold border ${isDark ? 'bg-white/5 border-white/5 text-zinc-300' : 'bg-gray-50 border-gray-100 text-gray-700'}`}>
-                  {userProfile.student_id || "N/A"}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className={`text-xs font-black uppercase tracking-widest ml-1 ${isDark ? 'text-zinc-400' : 'text-gray-500'}`}>
-                  Grade / Section
-                </label>
-                <div className={`w-full px-5 py-4 rounded-[20px] text-sm font-medium border ${isDark ? 'bg-white/5 border-white/5 text-zinc-300' : 'bg-gray-50 border-gray-100 text-gray-700'}`}>
-                  {userProfile.grade_section || "N/A"}
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <label className={`text-xs font-black uppercase tracking-widest ml-1 ${isDark ? 'text-zinc-400' : 'text-gray-500'}`}>
-                  Course
-                </label>
-                <div className={`w-full px-5 py-4 rounded-[20px] text-sm font-medium border ${isDark ? 'bg-white/5 border-white/5 text-zinc-300' : 'bg-gray-50 border-gray-100 text-gray-700'}`}>
-                  {userProfile.course || "N/A"}
-                </div>
-              </div>
-
-              <div className="space-y-2 col-span-2">
-                <label className={`text-xs font-black uppercase tracking-widest ml-1 ${isDark ? 'text-zinc-400' : 'text-gray-500'}`}>
-                  Account Status
-                </label>
-                <div className={`w-full px-5 py-4 rounded-[20px] flex items-center gap-3 border ${isDark ? 'bg-white/5 border-white/5' : 'bg-gray-50 border-gray-100'}`}>
-                  {(!userProfile.status || userProfile.status === 'active') && (
-                    <>
-                      <div className="w-3 h-3 rounded-full bg-green-500 shadow-[0_0_10px_rgba(34,197,94,0.5)] animate-pulse" />
-                      <span className="text-sm font-bold text-green-500">Active</span>
-                    </>
-                  )}
-                  {userProfile.status === 'fines' && (
-                    <>
-                      <div className="w-3 h-3 rounded-full bg-yellow-500 shadow-[0_0_10px_rgba(234,179,8,0.5)]" />
-                      <span className="text-sm font-bold text-yellow-500">With Fines</span>
-                    </>
-                  )}
-                  {userProfile.status === 'suspended' && (
-                    <>
-                      <div className="w-3 h-3 rounded-full bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]" />
-                      <span className="text-sm font-bold text-red-500">Suspended</span>
-                    </>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Hidden technical field, kept for debug if needed but pushed down */}
-            <div className="space-y-2 opacity-30 mt-4 hidden">
-              <label className="text-[10px] uppercase font-bold">System ID</label>
-              <input type="text" disabled value={userProfile.id} className="text-xs bg-transparent" />
-            </div>
           </div>
         </div>
 
-        {/* Footer with Save Button */}
         <div className={`p-8 pt-4 flex gap-3 transition-all duration-300 ${isDark ? 'bg-zinc-800/30' : 'bg-gray-50/50'}`}>
           <button
             onClick={onClose}
@@ -293,14 +173,12 @@ const AccountSettingsModal: React.FC<AccountSettingsModalProps> = ({
 
           <button
             onClick={async () => {
-              console.log('[MODAL] 🔴 Sign Out button clicked!');
               setIsLoggingOut(true);
               try {
                 await onLogout();
-                console.log('[MODAL] ✅ onLogout() completed');
-                onClose(); // Close modal after successful logout
+                onClose();
               } catch (error) {
-                console.error('[MODAL] ❌ Error during logout:', error);
+                console.error('Error during logout:', error);
                 setIsLoggingOut(false);
               }
             }}

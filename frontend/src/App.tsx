@@ -16,13 +16,13 @@ import FeaturedCarousel from './components/FeaturedCarousel';
 import AccountSettingsModal from './components/AccountSettingsModal';
 import Auth from './components/Auth';
 import Home from './components/Home';
+import DashboardHome from './components/DashboardHome';
 import ExamplesPage from './components/ExamplesPage';
 import FeaturesPage from './components/FeaturesPage';
 import { getDocument } from './utils/pdfUtils';
 import { BookRef, LibraryBook, UserProfile, Category, Theme, AppView } from './types';
 import { Toaster } from './utils/toast';
 import { useAuth } from './context/AuthContext';
-import { supabase } from './lib/supabase';
 import AdminDashboard from './components/AdminDashboard';
 import AdminAuth from './components/AdminAuth';
 import VantaFog from './components/VantaFog';
@@ -129,10 +129,13 @@ const FlipBookAppContent: React.FC = () => {
   const [libraryFilter, setLibraryFilter] = useState('all');
   const [isAccountSettingsOpen, setIsAccountSettingsOpen] = useState(false);
 
-  // Close auth modal when user logs in
+  // Close auth modal and navigate to home when user logs in
   useEffect(() => {
     if (user) {
       setIsShowingAuth(false);
+      if (view === 'landing') {
+        setView('home');
+      }
     }
   }, [user]);
 
@@ -146,28 +149,8 @@ const FlipBookAppContent: React.FC = () => {
   }, [user]);
 
   const fetchBooks = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('books')
-        .select('*')
-        .eq('user_id', user?.id)
-        .order('created_at', { ascending: false });
-
-      if (data) {
-        const loadedBooks: LibraryBook[] = data.map((b: any) => ({
-          id: b.id,
-          name: b.title,
-          doc: null, // Load only when opened
-          coverUrl: b.cover_url,
-          totalPages: b.total_pages || 0,
-          isFavorite: false,
-          category: 'Uncategorized'
-        }));
-        setBooks(loadedBooks);
-      }
-    } catch (err) {
-      console.error(err);
-    }
+    // Placeholder for future database integration
+    console.log('Database not configured. Books will be loaded when database is set up.');
   };
 
   const bookRef = useRef<BookRef | null>(null);
@@ -209,100 +192,15 @@ const FlipBookAppContent: React.FC = () => {
   };
 
   const handleFilesSelect = async (files: File[]) => {
-    // Validate PDFs upfront
     const pdfFiles = files.filter(f => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'));
     if (pdfFiles.length === 0) {
       alert("Please upload PDF files only");
       return;
     }
-    if (pdfFiles.length !== files.length) {
-      alert(`${files.length - pdfFiles.length} non-PDF file(s) skipped`);
-    }
 
-    setLoadingStatus("Uploading to Cloud...");
-    try {
-      for (const file of pdfFiles) {
-        console.log(`[UPLOAD] Starting upload for: ${file.name}`);
-        const fileExt = file.name.split('.').pop();
-        const fileName = `${Math.random().toString(36).substring(2, 15)}.${fileExt}`;
-        const filePath = `${user?.id}/${fileName}`;
-
-        // 1. Upload File
-        console.log(`[UPLOAD] Step 1: Uploading PDF to storage...`);
-        const { error: uploadError } = await supabase.storage
-          .from('books')
-          .upload(filePath, file);
-
-        if (uploadError) {
-          console.error("[UPLOAD] Storage upload failed:", uploadError);
-          throw uploadError;
-        }
-        console.log(`[UPLOAD] Step 1: PDF uploaded successfully`);
-
-        // 2. Generate Cover & Info
-        console.log(`[UPLOAD] Step 2: Parsing PDF...`);
-        let doc = null;
-        let coverUrl = "";
-        let publicCoverUrl = "";
-        let totalPages = 0;
-
-        try {
-          doc = await getDocument(file);
-          totalPages = doc?.numPages || 0;
-          console.log(`[UPLOAD] PDF parsed: ${totalPages} pages`);
-
-          console.log(`[UPLOAD] Step 3: Generating cover...`);
-          if (doc) {
-            coverUrl = await extractCover(doc);
-            console.log(`[UPLOAD] Cover extracted: ${coverUrl ? 'success' : 'failed'}`);
-
-            // Upload Cover to public bucket for easier access
-            if (coverUrl) {
-              console.log(`[UPLOAD] Step 4: Uploading cover to storage...`);
-              const coverBlob = await (await fetch(coverUrl)).blob();
-              const coverPath = `${user?.id}/${fileName.replace('.pdf', '.jpg')}`;
-              const { error: coverError } = await supabase.storage.from('covers').upload(coverPath, coverBlob);
-              if (coverError) {
-                console.warn("[UPLOAD] Cover upload failed, skipping:", coverError);
-              } else {
-                const { data: publicData } = supabase.storage.from('covers').getPublicUrl(coverPath);
-                publicCoverUrl = publicData.publicUrl;
-                console.log(`[UPLOAD] Cover uploaded successfully`);
-              }
-            }
-          }
-        } catch (pdfError) {
-          console.warn("[UPLOAD] PDF parsing/cover generation failed, continuing anyway:", pdfError);
-        }
-
-        // 3. Insert Record
-        console.log(`[UPLOAD] Step 5: Inserting database record...`);
-        const { error: dbError } = await supabase.from('books').insert({
-          user_id: user?.id,
-          title: file.name,
-          file_url: filePath,
-          cover_url: publicCoverUrl || "",
-          total_pages: totalPages
-        });
-
-        if (dbError) {
-          console.error("[UPLOAD] Database insert failed:", dbError);
-          throw dbError;
-        }
-        console.log(`[UPLOAD] Database record inserted successfully`);
-      }
-
-      console.log(`[UPLOAD] All files uploaded, fetching books...`);
-      await fetchBooks();
-      setLoadingStatus(null);
-      handleSetView('library');
-      console.log(`[UPLOAD] Complete!`);
-
-    } catch (err: any) {
-      console.error("[UPLOAD] Fatal error:", err);
-      alert("Upload failed: " + err.message);
-      setLoadingStatus(null);
-    }
+    // Placeholder for future database integration
+    alert("Database not configured. Please set up your database to upload files.");
+    setLoadingStatus(null);
   };
 
   const handleCategorySelection = (category: Category) => {
@@ -352,25 +250,9 @@ const FlipBookAppContent: React.FC = () => {
   useEffect(() => {
     const loadSelectedBookDoc = async () => {
       if (view === 'reader' && selectedBook && !selectedBook.doc) {
-        setLoadingStatus("Opening Masterpiece...");
-        try {
-          // Get the record from DB to get file_url
-          const { data: b } = await supabase.from('books').select('file_url').eq('id', selectedBook.id).single();
-          if (b?.file_url) {
-            const { data: signedData } = await supabase.storage.from('books').createSignedUrl(b.file_url, 3600);
-            if (signedData?.signedUrl) {
-              const response = await fetch(signedData.signedUrl);
-              const blob = await response.blob();
-              const file = new File([blob], selectedBook.name, { type: 'application/pdf' });
-              const doc = await getDocument(file);
-              setSelectedBook(prev => prev ? { ...prev, doc } : null);
-            }
-          }
-        } catch (e) {
-          console.error("Error loading PDF", e);
-        } finally {
-          setLoadingStatus(null);
-        }
+        // Placeholder for future database integration
+        console.log('Database not configured. Cannot load book from storage.');
+        setLoadingStatus(null);
       }
     };
     loadSelectedBookDoc();
@@ -379,8 +261,9 @@ const FlipBookAppContent: React.FC = () => {
   if (isShowingAuth) return <Auth onAuthSuccess={() => setIsShowingAuth(false)} onBack={() => setIsShowingAuth(false)} />;
 
   const isWebsiteView = ['landing', 'examples', 'features'].includes(view);
+  const showSidebar = !isWebsiteView && user && view !== 'reader' && view !== 'admin';
 
-  // Simplified profile object for Sidebar since we are using fetched Profile
+  // Simplified profile object for Sidebar
   const derivedProfile: UserProfile | null = profile
     ? {
       id: profile.id,
@@ -388,151 +271,163 @@ const FlipBookAppContent: React.FC = () => {
       name: profile.name || profile.full_name || profile.email,
       role: profile.role || 'user',
       created_at: profile.created_at,
-      photoUrl: profile.avatar_url || profile.photo_url, // Check both common conventions
+      photoUrl: profile.photo_url || profile.avatar_url || '',
+      photo_url: profile.photo_url || profile.avatar_url || '',
       initials: (profile.name || profile.email || "U").substring(0, 2).toUpperCase(),
-      student_id: profile.student_id,
-      grade_section: profile.grade_section,
-      course: profile.course,
-      status: profile.status
+      student_id: profile.student_id || undefined,
+      grade_section: profile.grade_section || undefined,
+      course: profile.course || undefined,
+      status: profile.status || 'active'
     }
     : (user ? {
       id: user.id,
       email: user.email!,
-      name: user.email!, // Fallback
+      name: user.email!,
       role: 'user',
       created_at: new Date().toISOString(),
-      initials: (user.email || "U").substring(0, 2).toUpperCase()
+      initials: (user.email || "U").substring(0, 2).toUpperCase(),
     } : null);
 
   return (
-    <div className={`flex flex-col min-h-screen w-full transition-colors duration-700 selection:bg-blue-500 selection:text-white relative ${theme === 'dark' ? 'bg-black text-white' : 'bg-white text-gray-900'}`}>
+    <div className={`flex flex-col min-h-screen w-full transition-colors duration-700 selection:bg-blue-500 selection:text-white relative ${theme === 'dark' ? 'bg-[#0a0a0a] text-white' : 'bg-[#f5f5f7] text-gray-900'}`}>
       {theme === 'dark' && <VantaFog />}
       <div className="relative z-10 flex flex-col min-h-screen w-full">
-      <Toaster />
-      <Header
-        view={view}
-        theme={theme}
-        onNavigate={handleSetView}
-        onOpenSettings={() => setIsAccountSettingsOpen(true)}
-        onAuth={() => setIsShowingAuth(true)}
-        isAuthenticated={!!user}
-        userProfile={derivedProfile}
-        fileName={selectedBook?.name}
-      />
+        <Toaster />
+        <Header
+          view={view}
+          theme={theme}
+          onNavigate={handleSetView}
+          onOpenSettings={() => setIsAccountSettingsOpen(true)}
+          onAuth={() => setIsShowingAuth(true)}
+          isAuthenticated={!!user}
+          userProfile={derivedProfile}
+          fileName={selectedBook?.name}
+        />
 
-      <div className={`flex-1 flex pt-20 ${isWebsiteView ? 'flex-col' : 'overflow-hidden h-[calc(100vh-80px)]'}`}>
-        {!isWebsiteView && user && (
-          <Sidebar
-            theme={theme}
-            userProfile={derivedProfile!}
-            activeFilter={libraryFilter}
-            onFilterChange={setLibraryFilter}
-            onLogout={signOut}
-            onToggleTheme={toggleTheme}
-            onOpenSettings={() => setIsAccountSettingsOpen(true)}
-            onOpenAdmin={() => handleSetView('admin')}
-          />
-        )}
-
-        <main className={`flex-1 relative transition-colors duration-700 ${theme === 'dark' ? 'bg-black' : 'bg-white'} ${!isWebsiteView ? 'h-full overflow-hidden' : ''}`}>
-          {view === 'landing' && (
-            <Home
+        <div className={`flex-1 flex pt-14 ${isWebsiteView ? 'flex-col' : 'overflow-hidden h-[calc(100vh-56px)]'}`}>
+          {showSidebar && (
+            <Sidebar
               theme={theme}
-              onStart={user ? () => handleSetView('library') : () => setIsShowingAuth(true)}
-              onViewExamples={() => handleSetView('examples')}
+              userProfile={derivedProfile!}
+              activeView={view}
+              activeFilter={libraryFilter}
+              onFilterChange={setLibraryFilter}
+              onNavigate={handleSetView}
+              onLogout={signOut}
+              onToggleTheme={toggleTheme}
+              onOpenSettings={() => setIsAccountSettingsOpen(true)}
+              onOpenAdmin={() => handleSetView('admin')}
             />
           )}
 
-          {view === 'examples' && (
-            <ExamplesPage theme={theme} onSelectSample={user ? () => handleSetView('library') : () => setIsShowingAuth(true)} />
-          )}
-
-          {view === 'features' && (
-            <FeaturesPage theme={theme} />
-          )}
-
-          {view === 'admin' && isAdmin && (
-            <AdminDashboard theme={theme} onExit={() => handleSetView('library')} onLogout={signOut} />
-          )}
-
-          {view === 'upload' && (
-            <Upload theme={theme} onFilesSelect={handleFilesSelect} onBack={() => handleSetView('library')} isLoading={!!loadingStatus} statusMessage={loadingStatus || ""} />
-          )}
-
-          {view === 'library' && (
-            <div className="h-full overflow-y-auto no-scrollbar">
-              {books.length > 0 && libraryFilter === 'all' && <FeaturedCarousel books={books.slice(0, 5)} theme={theme} />}
-              <Library
+          <main className={`flex-1 relative transition-colors duration-700 ${theme === 'dark' ? 'bg-transparent' : 'bg-transparent'} ${!isWebsiteView ? 'h-full overflow-hidden' : ''}`}>
+            {view === 'landing' && (
+              <Home
                 theme={theme}
-                activeFilter={libraryFilter}
-                books={filteredBooks}
-                onSelectBook={setPendingBook}
-                onAddNew={() => handleSetView('upload')}
-                onRemoveBook={(id) => setBooks(b => b.filter(x => x && x.id !== id))}
-                onToggleFavorite={(id) => setBooks(b => b.map(x => x && x.id === id ? { ...x, isFavorite: !x.isFavorite } : x))}
+                onStart={user ? () => handleSetView('home') : () => setIsShowingAuth(true)}
+                onViewExamples={() => handleSetView('examples')}
               />
+            )}
 
-            </div>
-          )}
+            {view === 'home' && (
+              <DashboardHome
+                theme={theme}
+                books={books}
+                onUpload={() => handleSetView('upload')}
+                onGoToLibrary={() => { setLibraryFilter('all'); handleSetView('library'); }}
+              />
+            )}
 
-          {view === 'reader' && selectedBook && (
-            <div className={`fixed inset-0 z-[60] animate-in fade-in duration-700 ${theme === 'dark' ? 'bg-black' : 'bg-white'}`}>
-              <div className={`fixed top-0 left-0 w-full h-[3px] z-[100] ${theme === 'dark' ? 'bg-zinc-900' : 'bg-gray-100'}`}>
-                <div className={`h-full transition-all duration-700 ${theme === 'dark' ? 'bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.6)]' : 'bg-black'}`} style={{ width: `${((currentPage + 1) / (selectedBook.totalPages || 1)) * 100}%` }} />
+            {view === 'examples' && (
+              <ExamplesPage theme={theme} onSelectSample={user ? () => handleSetView('home') : () => setIsShowingAuth(true)} />
+            )}
+
+            {view === 'features' && (
+              <FeaturesPage theme={theme} />
+            )}
+
+            {view === 'admin' && isAdmin && (
+              <AdminDashboard theme={theme} onExit={() => handleSetView('home')} onLogout={signOut} />
+            )}
+
+            {view === 'upload' && (
+              <Upload theme={theme} onFilesSelect={handleFilesSelect} onBack={() => handleSetView('library')} isLoading={!!loadingStatus} statusMessage={loadingStatus || ""} />
+            )}
+
+            {view === 'library' && (
+              <div className="h-full overflow-y-auto no-scrollbar">
+                {books.length > 0 && libraryFilter === 'all' && <FeaturedCarousel books={books.slice(0, 5)} theme={theme} />}
+                <Library
+                  theme={theme}
+                  activeFilter={libraryFilter}
+                  books={filteredBooks}
+                  onSelectBook={setPendingBook}
+                  onAddNew={() => handleSetView('upload')}
+                  onRemoveBook={(id) => setBooks(b => b.filter(x => x && x.id !== id))}
+                  onToggleFavorite={(id) => setBooks(b => b.map(x => x && x.id === id ? { ...x, isFavorite: !x.isFavorite } : x))}
+                />
+
               </div>
+            )}
 
-              <button onClick={() => { handleSetView('library'); setSelectedBook(null); }}
-                className={`fixed top-8 left-8 z-[110] p-4 backdrop-blur-md border transition-all shadow-2xl rounded-full ${theme === 'dark' ? 'bg-white/10 border-white/10 text-white hover:bg-white hover:text-black' : 'bg-black/5 border-black/5 text-black hover:bg-black hover:text-white'}`}>
-                <BookOpen size={24} />
-              </button>
+            {view === 'reader' && selectedBook && (
+              <div className={`fixed inset-0 z-[60] animate-in fade-in duration-700 ${theme === 'dark' ? 'bg-[#0a0a0a]' : 'bg-white'}`}>
+                <div className={`fixed top-0 left-0 w-full h-[3px] z-[100] ${theme === 'dark' ? 'bg-zinc-900' : 'bg-gray-100'}`}>
+                  <div className={`h-full transition-all duration-700 ${theme === 'dark' ? 'bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.6)]' : 'bg-black'}`} style={{ width: `${((currentPage + 1) / (selectedBook.totalPages || 1)) * 100}%` }} />
+                </div>
 
-              <BookViewer
-                pdfDocument={selectedBook.doc}
-                onFlip={setCurrentPage}
-                onBookInit={(b) => { if (b) bookRef.current = { pageFlip: () => b.pageFlip() }; }}
-                mode={readerMode}
-                zoomLevel={zoomLevel}
-                onZoomChange={setZoomLevel}
-                theme={theme}
-              />
+                <button onClick={() => { handleSetView('library'); setSelectedBook(null); }}
+                  className={`fixed top-8 left-8 z-[110] p-4 backdrop-blur-md border transition-all shadow-2xl rounded-full ${theme === 'dark' ? 'bg-white/10 border-white/10 text-white hover:bg-white hover:text-black' : 'bg-black/5 border-black/5 text-black hover:bg-black hover:text-white'}`}>
+                  <BookOpen size={24} />
+                </button>
 
-              <Controls
-                theme={theme}
-                currentPage={currentPage}
-                totalPages={selectedBook.totalPages || 1}
-                zoomLevel={zoomLevel}
-                onZoomChange={setZoomLevel}
-                onNext={() => bookRef.current?.pageFlip()?.flipNext()}
-                onPrev={() => bookRef.current?.pageFlip()?.flipPrev()}
-              />
-            </div>
-          )}
-        </main>
-      </div>
+                <BookViewer
+                  pdfDocument={selectedBook.doc}
+                  onFlip={setCurrentPage}
+                  onBookInit={(b) => { if (b) bookRef.current = { pageFlip: () => b.pageFlip() }; }}
+                  mode={readerMode}
+                  zoomLevel={zoomLevel}
+                  onZoomChange={setZoomLevel}
+                  theme={theme}
+                />
 
-      <LibraryActionModal
-        theme={theme}
-        book={pendingBook}
-        onClose={() => setPendingBook(null)}
-        onSelectMode={(m) => { setReaderMode(m); setSelectedBook(pendingBook); setPendingBook(null); handleSetView('reader'); setCurrentPage(0); }}
-        onSummarize={handleSummarize}
-        onApplySummary={(id, s) => setBooks(b => b.map(x => x && x.id === id ? { ...x, summary: s } : x))}
-        isSummarizing={isSummarizing}
-        onRemove={(id) => setBooks(b => b.filter(x => x && x.id !== id))}
-        onToggleFavorite={(id) => setBooks(b => b.map(x => x && x.id === id ? { ...x, isFavorite: !x.isFavorite } : x))}
-      />
+                <Controls
+                  theme={theme}
+                  currentPage={currentPage}
+                  totalPages={selectedBook.totalPages || 1}
+                  zoomLevel={zoomLevel}
+                  onZoomChange={setZoomLevel}
+                  onNext={() => bookRef.current?.pageFlip()?.flipNext()}
+                  onPrev={() => bookRef.current?.pageFlip()?.flipPrev()}
+                />
+              </div>
+            )}
+          </main>
+        </div>
 
-      {currentCategorizingIndex !== -1 && categorizingBooks[currentCategorizingIndex] && (
-        <CategorySelectionModal
-          isOpen={true}
-          bookName={categorizingBooks[currentCategorizingIndex].name}
-          coverUrl={categorizingBooks[currentCategorizingIndex].coverUrl}
-          onSelect={handleCategorySelection}
+        <LibraryActionModal
           theme={theme}
+          book={pendingBook}
+          onClose={() => setPendingBook(null)}
+          onSelectMode={(m) => { setReaderMode(m); setSelectedBook(pendingBook); setPendingBook(null); handleSetView('reader'); setCurrentPage(0); }}
+          onSummarize={handleSummarize}
+          onApplySummary={(id, s) => setBooks(b => b.map(x => x && x.id === id ? { ...x, summary: s } : x))}
+          isSummarizing={isSummarizing}
+          onRemove={(id) => setBooks(b => b.filter(x => x && x.id !== id))}
+          onToggleFavorite={(id) => setBooks(b => b.map(x => x && x.id === id ? { ...x, isFavorite: !x.isFavorite } : x))}
         />
-      )}
 
-      {derivedProfile && <AccountSettingsModal isOpen={isAccountSettingsOpen} onClose={() => setIsAccountSettingsOpen(false)} userProfile={derivedProfile} onSave={() => setIsAccountSettingsOpen(false)} theme={theme} onLogout={signOut} />}
+        {currentCategorizingIndex !== -1 && categorizingBooks[currentCategorizingIndex] && (
+          <CategorySelectionModal
+            isOpen={true}
+            bookName={categorizingBooks[currentCategorizingIndex].name}
+            coverUrl={categorizingBooks[currentCategorizingIndex].coverUrl}
+            onSelect={handleCategorySelection}
+            theme={theme}
+          />
+        )}
+
+        {derivedProfile && <AccountSettingsModal isOpen={isAccountSettingsOpen} onClose={() => setIsAccountSettingsOpen(false)} userProfile={derivedProfile} onSave={() => { setIsAccountSettingsOpen(false); }} theme={theme} onLogout={signOut} />}
       </div>
     </div>
   );

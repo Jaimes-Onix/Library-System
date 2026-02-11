@@ -60,7 +60,7 @@ export interface UserProfile {
 
 export type Theme = 'light' | 'dark';
 
-export type AppView = 'landing' | 'examples' | 'features' | 'library' | 'upload' | 'reader' | 'admin' | 'settings';
+export type AppView = 'landing' | 'home' | 'examples' | 'features' | 'library' | 'upload' | 'reader' | 'admin' | 'settings';
 
 export type VerificationStatus = 'pending' | 'verified' | 'expired' | 'error';
 

@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Library,
   Heart,
@@ -11,16 +11,22 @@ import {
   Palette,
   Moon,
   Sun,
-  ShieldCheck
+  ShieldCheck,
+  Loader2,
+  Home,
+  Upload,
+  BookOpen
 } from 'lucide-react';
-import { UserProfile, Theme } from '../types';
+import { UserProfile, Theme, AppView } from '../types';
 
 interface SidebarProps {
   theme: Theme;
   userProfile: UserProfile;
   onLogout: () => Promise<void>;
+  activeView: string;
   activeFilter: string;
   onFilterChange: (filter: string) => void;
+  onNavigate: (view: AppView) => void;
   onToggleTheme: () => void;
   onOpenSettings: () => void;
   onOpenAdmin: () => void;
@@ -30,148 +36,189 @@ const Sidebar: React.FC<SidebarProps> = ({
   theme,
   userProfile,
   onLogout,
+  activeView,
   activeFilter,
   onFilterChange,
+  onNavigate,
   onToggleTheme,
   onOpenSettings,
   onOpenAdmin
 }) => {
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+
   if (!userProfile) return null;
 
   const isDark = theme === 'dark';
 
-  // "Opposite Color" Logic for High Visual Clarity:
-  // If Main theme is Light (White), Sidebar is Dark (#1D1D1F).
-  // If Main theme is Dark (Black), Sidebar is Light (#F5F5F7).
+  // Inverted color scheme for contrast
   const sidebarBg = isDark ? 'bg-[#F5F5F7]' : 'bg-[#1D1D1F]';
   const sidebarText = isDark ? 'text-gray-900' : 'text-white';
-  const sidebarBorder = isDark ? 'border-gray-200' : 'border-white/5';
-  const sidebarItemHover = isDark ? 'hover:bg-gray-200' : 'hover:bg-white/5';
-
-  // Highlighted item logic
+  const sidebarItemHover = isDark ? 'hover:bg-black/[0.05]' : 'hover:bg-white/[0.06]';
   const sidebarItemActive = isDark ? 'bg-black text-white' : 'bg-white text-black';
   const sidebarSecondaryText = isDark ? 'text-gray-400' : 'text-zinc-500';
+  const dividerColor = isDark ? 'border-gray-200/60' : 'border-white/[0.06]';
 
   const navItems = [
-    { id: 'all', label: 'All Books', icon: Library },
-    { id: 'favorites', label: 'Favorites', icon: Heart },
+    { id: 'home', label: 'Home', icon: Home, action: () => onNavigate('home') },
+    { id: 'all', label: 'All Books', icon: Library, action: () => { onNavigate('library'); onFilterChange('all'); } },
+    { id: 'upload', label: 'Import PDF', icon: Upload, action: () => onNavigate('upload') },
+    { id: 'favorites', label: 'Favorites', icon: Heart, action: () => { onNavigate('library'); onFilterChange('favorites'); } },
   ];
 
   const categories = [
-    { id: 'Professional', label: 'Professional', icon: Briefcase, color: 'bg-blue-500' },
-    { id: 'Academic', label: 'Academic', icon: GraduationCap, color: 'bg-purple-500' },
-    { id: 'Personal', label: 'Personal', icon: User, color: 'bg-orange-500' },
-    { id: 'Creative', label: 'Creative', icon: Palette, color: 'bg-pink-500' },
+    { id: 'Professional', label: 'Professional', icon: Briefcase, color: 'bg-blue-500', activeRing: 'ring-blue-400/40' },
+    { id: 'Academic', label: 'Academic', icon: GraduationCap, color: 'bg-purple-500', activeRing: 'ring-purple-400/40' },
+    { id: 'Personal', label: 'Personal', icon: User, color: 'bg-orange-500', activeRing: 'ring-orange-400/40' },
+    { id: 'Creative', label: 'Creative', icon: Palette, color: 'bg-pink-500', activeRing: 'ring-pink-400/40' },
   ];
 
+  const getIsNavActive = (id: string) => {
+    if (id === 'home') return activeView === 'home';
+    if (id === 'upload') return activeView === 'upload';
+    if (id === 'all') return activeView === 'library' && activeFilter === 'all';
+    if (id === 'favorites') return activeView === 'library' && activeFilter === 'favorites';
+    return false;
+  };
 
+  const getIsCategoryActive = (id: string) => {
+    return activeView === 'library' && activeFilter === id;
+  };
 
   return (
-    <aside className={`w-84 h-full flex flex-col z-40 hidden md:flex transition-all duration-700 ease-in-out border-r shadow-2xl ${sidebarBg} ${sidebarText} ${sidebarBorder}`}>
-      {/* User Profile Header */}
-      <div className="p-10 pb-6">
-        <div className="flex items-center gap-5 mb-12 group cursor-pointer" onClick={onOpenSettings}>
-          <div className={`w-16 h-16 rounded-[22px] overflow-hidden flex items-center justify-center text-xl font-bold shadow-xl transition-all duration-500 group-hover:scale-110 border ${isDark ? 'bg-white text-black border-gray-200' : 'bg-white/10 text-white border-white/10'}`}>
-            {userProfile.photoUrl ? (
-              <img src={userProfile.photoUrl} alt={userProfile.name} className="w-full h-full object-cover" />
-            ) : (
-              userProfile.initials
-            )}
-          </div>
-          <div className="flex flex-col min-w-0">
-            <span className="text-lg font-bold truncate group-hover:text-orange-500 transition-colors leading-tight">{userProfile.name}</span>
-            <span className={`text-xs font-black uppercase tracking-tighter mt-0.5 ${sidebarSecondaryText}`}>Pro Member</span>
-          </div>
-        </div>
+    <aside className={`w-[260px] min-w-[260px] h-full flex flex-col z-40 hidden md:flex transition-all duration-500 border-r overflow-y-auto overflow-x-hidden ${sidebarBg} ${sidebarText} ${dividerColor}`}>
 
-        <div className="space-y-2">
-          <p className={`px-5 text-xs font-black uppercase tracking-[0.2em] mb-4 ${sidebarSecondaryText}`}>Library</p>
-          {navItems.map((item) => (
-            <button
-              key={item.id}
-              onClick={() => onFilterChange(item.id)}
-              className={`w-full flex items-center gap-4 px-6 py-5 rounded-[20px] transition-all text-base font-bold
-                ${activeFilter === item.id
-                  ? `${sidebarItemActive} shadow-xl translate-x-1`
-                  : `${sidebarText} ${sidebarItemHover}`
-                }
-              `}
-            >
-              <item.icon size={22} strokeWidth={activeFilter === item.id ? 2.5 : 2} />
-              {item.label}
-            </button>
-          ))}
+      {/* ─── App Logo ─── */}
+      <div className="px-7 pt-7 pb-5 flex-shrink-0">
+        <div className="flex items-center gap-3.5">
+          <div className={`p-2 rounded-2xl ${isDark ? 'bg-black' : 'bg-white'}`}>
+            <BookOpen size={20} className={isDark ? 'text-white' : 'text-black'} strokeWidth={2.5} />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-base font-bold tracking-tight leading-tight">Library</span>
+            <span className={`text-[10px] font-black uppercase tracking-[0.15em] ${sidebarSecondaryText}`}>System</span>
+          </div>
         </div>
       </div>
 
-      {/* Categories */}
-      <div className="flex-1 overflow-y-auto no-scrollbar px-10">
-        <div className="space-y-2">
-          <p className={`px-5 text-xs font-black uppercase tracking-[0.2em] mb-4 ${sidebarSecondaryText}`}>Categories</p>
-          {categories.map((cat) => (
-            <button
-              key={cat.id}
-              onClick={() => onFilterChange(cat.id)}
-              className={`w-full flex items-center gap-4 px-6 py-5 rounded-[20px] transition-all text-base font-bold
-                ${activeFilter === cat.id
-                  ? `${sidebarItemActive} shadow-xl translate-x-1`
-                  : `${sidebarText} ${sidebarItemHover}`
-                }
-              `}
-            >
-              <div className={`w-3 h-3 rounded-full ${cat.color} ${activeFilter === cat.id ? 'ring-4 ring-offset-2 ring-offset-current' : ''}`} />
-              <cat.icon size={22} strokeWidth={activeFilter === cat.id ? 2.5 : 2} />
-              {cat.label}
-            </button>
-          ))}
+      {/* ─── Navigate Section ─── */}
+      <div className="px-5 pt-2 pb-2 flex-shrink-0">
+        <p className={`px-4 text-[10px] font-black uppercase tracking-[0.2em] mb-3 ${sidebarSecondaryText}`}>
+          Navigate
+        </p>
+        <div className="space-y-1">
+          {navItems.map((item) => {
+            const isActive = getIsNavActive(item.id);
+            return (
+              <button
+                key={item.id}
+                onClick={item.action}
+                className={`w-full flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-200 text-[14px] font-semibold group
+                  ${isActive
+                    ? `${sidebarItemActive} shadow-lg`
+                    : `${sidebarText} ${sidebarItemHover} active:scale-[0.98]`
+                  }
+                `}
+              >
+                <item.icon size={20} strokeWidth={isActive ? 2.5 : 1.8} className={`transition-all duration-200 flex-shrink-0 ${!isActive ? 'group-hover:scale-110' : ''}`} />
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
-      {/* Action Buttons */}
-      <div className="p-10 space-y-3">
+      {/* ─── Categories Section ─── */}
+      <div className="flex-1 min-h-0 px-5 pt-4 pb-2">
+        <p className={`px-4 text-[10px] font-black uppercase tracking-[0.2em] mb-3 ${sidebarSecondaryText}`}>
+          Categories
+        </p>
+        <div className="space-y-1">
+          {categories.map((cat) => {
+            const isActive = getIsCategoryActive(cat.id);
+            return (
+              <button
+                key={cat.id}
+                onClick={() => { onNavigate('library'); onFilterChange(cat.id); }}
+                className={`w-full flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-200 text-[14px] font-semibold group
+                  ${isActive
+                    ? `${sidebarItemActive} shadow-lg`
+                    : `${sidebarText} ${sidebarItemHover} active:scale-[0.98]`
+                  }
+                `}
+              >
+                <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 transition-all duration-200 ${cat.color} ${isActive ? `ring-[3px] ${cat.activeRing} scale-110` : 'group-hover:scale-125'}`} />
+                <cat.icon size={20} strokeWidth={isActive ? 2.5 : 1.8} className={`transition-all duration-200 flex-shrink-0 ${!isActive ? 'group-hover:scale-110' : ''}`} />
+                <span>{cat.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* ─── Divider ─── */}
+      <div className={`mx-7 border-t flex-shrink-0 ${dividerColor}`} />
+
+      {/* ─── Bottom Actions ─── */}
+      <div className="px-5 py-5 space-y-1 flex-shrink-0 mt-auto">
+        {/* Theme Toggle */}
         <button
           onClick={onToggleTheme}
-          className={`w-full flex items-center gap-4 px-6 py-5 rounded-[20px] text-base font-bold transition-all ${sidebarText} ${sidebarItemHover}`}
+          className={`w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-[14px] font-semibold transition-all duration-200 active:scale-[0.98] group ${sidebarText} ${sidebarItemHover}`}
         >
-          {isDark ? <Moon size={22} /> : <Sun size={22} />}
-          {isDark ? 'Light Mode' : 'Dark Mode'}
+          <div className="relative w-5 h-5 flex-shrink-0">
+            <Sun size={20} strokeWidth={1.8} className={`absolute inset-0 transition-all duration-500 ${isDark ? 'opacity-0 rotate-90 scale-0' : 'opacity-100 rotate-0 scale-100'}`} />
+            <Moon size={20} strokeWidth={1.8} className={`absolute inset-0 transition-all duration-500 ${isDark ? 'opacity-100 rotate-0 scale-100' : 'opacity-0 -rotate-90 scale-0'}`} />
+          </div>
+          <span>{isDark ? 'Dark Mode' : 'Light Mode'}</span>
         </button>
 
+        {/* Admin Dashboard */}
         {userProfile.role === 'admin' && (
           <button
             onClick={onOpenAdmin}
-            className={`w-full flex items-center gap-4 px-6 py-5 rounded-[20px] text-base font-bold transition-all ${isDark ? 'bg-orange-600/10 text-orange-500 hover:bg-orange-600/20' : 'bg-orange-50 text-orange-600 hover:bg-orange-100'} mb-2 border border-orange-500/20`}
+            className={`w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-[14px] font-bold transition-all duration-200 active:scale-[0.98] group border
+              ${isDark
+                ? 'bg-orange-500/10 text-orange-600 hover:bg-orange-500/15 border-orange-500/15'
+                : 'bg-orange-500/10 text-orange-400 hover:bg-orange-500/15 border-orange-500/10'
+              }`}
           >
-            <ShieldCheck size={22} />
-            Admin Dashboard
+            <ShieldCheck size={20} strokeWidth={2} className="group-hover:rotate-12 transition-transform duration-300 flex-shrink-0" />
+            <span>Admin Panel</span>
           </button>
         )}
 
+        {/* Account Settings */}
         <button
           onClick={onOpenSettings}
-          className={`w-full flex items-center gap-4 px-6 py-5 rounded-[20px] text-base font-bold transition-all ${sidebarText} ${sidebarItemHover}`}
+          className={`w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-[14px] font-semibold transition-all duration-200 active:scale-[0.98] group ${sidebarText} ${sidebarItemHover}`}
         >
-          <Settings size={22} />
-          Account Settings
+          <Settings size={20} strokeWidth={1.8} className="group-hover:rotate-90 transition-transform duration-500 flex-shrink-0" />
+          <span>Account Settings</span>
         </button>
 
+        {/* Sign Out */}
         <button
           onClick={async () => {
-            console.log('[SIDEBAR] 🔴 Sign Out button clicked!');
+            if (isLoggingOut) return;
+            setIsLoggingOut(true);
             try {
               await onLogout();
-              console.log('[SIDEBAR] ✅ onLogout() completed');
             } catch (error) {
-              console.error('[SIDEBAR] ❌ Error during logout:', error);
+              console.error('[SIDEBAR] Error during logout:', error);
+              setIsLoggingOut(false);
             }
           }}
-          className={`w-full flex items-center gap-4 px-6 py-5 rounded-[20px] text-base font-black text-red-500 transition-all active:scale-95 ${isDark ? 'hover:bg-red-50' : 'hover:bg-red-500/10'}`}
+          disabled={isLoggingOut}
+          className={`w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-[14px] font-bold transition-all duration-200 active:scale-[0.98] group text-red-500 disabled:opacity-50
+            ${isDark ? 'hover:bg-red-50' : 'hover:bg-red-500/10'}`}
         >
-          <LogOut size={22} />
-          Sign Out
+          {isLoggingOut ? (
+            <Loader2 size={20} className="animate-spin flex-shrink-0" />
+          ) : (
+            <LogOut size={20} strokeWidth={2} className="group-hover:-translate-x-0.5 transition-transform duration-200 flex-shrink-0" />
+          )}
+          <span>{isLoggingOut ? 'Signing Out...' : 'Sign Out'}</span>
         </button>
-
-
       </div>
     </aside>
   );

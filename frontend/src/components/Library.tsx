@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Plus, Trash2, X, Check, Heart, Briefcase, GraduationCap, User, Palette, Sparkles } from 'lucide-react';
+import { Plus, Trash2, X, Check, Heart, Briefcase, GraduationCap, User, Palette } from 'lucide-react';
 import { LibraryBook, Theme, Category } from '../types';
 
 interface LibraryProps {
@@ -13,22 +13,22 @@ interface LibraryProps {
   activeFilter: string;
 }
 
-const CategoryTag: React.FC<{ category?: Category }> = ({ category }) => {
+const CategoryTag: React.FC<{ category?: Category; isDark?: boolean }> = ({ category, isDark }) => {
   if (!category || category === 'Uncategorized') return null;
 
   const styles = {
-    Professional: { bg: 'bg-blue-50', text: 'text-blue-600', icon: Briefcase },
-    Academic: { bg: 'bg-purple-50', text: 'text-purple-600', icon: GraduationCap },
-    Personal: { bg: 'bg-orange-50', text: 'text-orange-600', icon: User },
-    Creative: { bg: 'bg-pink-50', text: 'text-pink-600', icon: Palette },
+    Professional: { bg: isDark ? 'bg-blue-500/10' : 'bg-blue-50', text: 'text-blue-500', icon: Briefcase },
+    Academic: { bg: isDark ? 'bg-purple-500/10' : 'bg-purple-50', text: 'text-purple-500', icon: GraduationCap },
+    Personal: { bg: isDark ? 'bg-orange-500/10' : 'bg-orange-50', text: 'text-orange-500', icon: User },
+    Creative: { bg: isDark ? 'bg-pink-500/10' : 'bg-pink-50', text: 'text-pink-500', icon: Palette },
   }[category];
 
   if (!styles) return null;
   const Icon = styles.icon;
 
   return (
-    <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider ${styles.bg} ${styles.text} border border-current opacity-70`}>
-      <Icon size={12} />
+    <div className={`inline-flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider ${styles.bg} ${styles.text}`}>
+      <Icon size={10} />
       {category}
     </div>
   );
@@ -61,7 +61,7 @@ const Library: React.FC<LibraryProps> = ({
       case 'favorites':
         return 'Favorite Books';
       case 'Professional':
-        return 'Professional Books';
+        return 'Professional';
       case 'Academic':
         return 'Academic Library';
       case 'Personal':
@@ -74,38 +74,50 @@ const Library: React.FC<LibraryProps> = ({
     }
   };
 
+  const getLibrarySubtitle = () => {
+    if (activeFilter === 'all') return 'Curated Collection';
+    if (activeFilter === 'favorites') return 'Your Saved Picks';
+    return `Collection`;
+  };
+
   return (
     <div className="relative min-h-full w-full overflow-hidden">
-      {/* Aesthetic Background Elements */}
+      {/* Subtle background effects */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
-        <div className={`absolute top-[-10%] right-[-5%] w-[60%] h-[60%] rounded-full blur-[140px] opacity-20 animate-pulse transition-colors duration-1000 ${isDark ? 'bg-orange-900/40' : 'bg-orange-200'}`} style={{ animationDuration: '8s' }} />
-        <div className={`absolute bottom-[-10%] left-[-5%] w-[50%] h-[50%] rounded-full blur-[120px] opacity-15 animate-pulse transition-colors duration-1000 ${isDark ? 'bg-red-900/30' : 'bg-red-100'}`} style={{ animationDuration: '12s', animationDelay: '2s' }} />
-        <div className="absolute inset-0 opacity-[0.03] mix-blend-overlay" style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` }} />
+        <div className={`absolute top-[-10%] right-[-5%] w-[40%] h-[40%] rounded-full blur-[180px] opacity-[0.06] transition-colors duration-1000 ${isDark ? 'bg-gray-400' : 'bg-gray-200'}`} />
+        <div className={`absolute bottom-[-10%] left-[-5%] w-[30%] h-[30%] rounded-full blur-[160px] opacity-[0.04] transition-colors duration-1000 ${isDark ? 'bg-gray-500' : 'bg-gray-100'}`} />
       </div>
 
-      <div className={`relative z-10 w-full max-w-[1600px] mx-auto px-12 pb-40 transition-all duration-700 ${openingBookId ? 'opacity-40 grayscale-[0.3] pointer-events-none' : 'opacity-100'}`}>
-        <div className="flex items-center justify-between mt-16 mb-20">
-          <div className="space-y-2">
-            <h2 className={`text-6xl font-black tracking-tight ${isDark ? 'text-white' : 'text-[#1D1D1F]'}`}>
-              <span className="text-orange-500">Your</span> Library
+      <div className={`relative z-10 w-full max-w-[1400px] mx-auto px-10 pb-32 transition-all duration-500 ${openingBookId ? 'opacity-40 pointer-events-none' : 'opacity-100'}`}>
+        {/* Header */}
+        <div className="flex items-end justify-between mt-12 mb-14">
+          <div className="space-y-1">
+            <h2 className={`text-4xl font-black tracking-tight ${isDark ? 'text-white' : 'text-[#1D1D1F]'}`}>
+              {getLibraryTitle()}
+              {['Professional', 'Academic', 'Personal', 'Creative'].includes(activeFilter) && (
+                <span className={`${isDark ? 'text-gray-500' : 'text-gray-400'}`}> Flipbooks</span>
+              )}
             </h2>
-            <div className="flex items-center gap-2.5 text-xs font-black uppercase tracking-[0.25em] opacity-40">
-              <Sparkles size={14} className="text-orange-500" />
-              <span>{activeFilter === 'all' ? 'Curated Collection' : `Collection • ${activeFilter}`}</span>
-            </div>
+            <p className={`text-xs font-bold uppercase tracking-[0.2em] ${isDark ? 'text-zinc-600' : 'text-gray-400'}`}>
+              {getLibrarySubtitle()}
+            </p>
           </div>
 
           <button
             onClick={onAddNew}
-            className={`group relative flex items-center gap-3 px-10 py-5 rounded-[22px] transition-all active:scale-95 shadow-2xl text-base font-bold overflow-hidden ${isDark ? 'bg-orange-600 text-white hover:bg-orange-500' : 'bg-[#1D1D1F] text-white hover:bg-gray-800'}`}
+            className={`group flex items-center gap-2 px-6 py-3 rounded-2xl transition-all active:scale-95 text-sm font-bold border ${
+              isDark 
+                ? 'bg-white/[0.06] border-white/[0.08] text-white hover:bg-white/[0.1]' 
+                : 'bg-white border-gray-200 text-gray-900 hover:bg-gray-50 shadow-sm'
+            }`}
           >
-            <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/10 to-white/0 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700" />
-            <Plus size={24} className="relative z-10" />
-            <span className="relative z-10">Import Files</span>
+            <Plus size={18} className="group-hover:rotate-90 transition-transform duration-300" />
+            Add PDF
           </button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-14 gap-y-20">
+        {/* Book Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-x-8 gap-y-12">
           {books.map((book) => {
             if (!book || !book.id) return null;
 
@@ -116,95 +128,103 @@ const Library: React.FC<LibraryProps> = ({
             return (
               <div
                 key={book.id}
-                className="group cursor-pointer relative animate-in fade-in slide-in-from-bottom-4 duration-500"
+                className="group cursor-pointer relative animate-in fade-in slide-in-from-bottom-3 duration-500"
                 onClick={() => handleBookClick(book)}
               >
-                <div className={`relative aspect-[3/4.2] mb-6 transition-all duration-500 ease-out 
-                  ${!isOpening && !isConfirming ? 'hover:-translate-y-4 hover:shadow-[0_50px_100px_-25px_rgba(0,0,0,0.45)]' : ''} 
-                  shadow-[0_20px_45px_-12px_rgba(0,0,0,0.2)] rounded-[10px] overflow-hidden border
-                  ${isDark ? 'bg-zinc-800 border-white/5' : 'bg-white border-white/80 backdrop-blur-sm'}`}
+                {/* Book Cover */}
+                <div className={`relative aspect-[3/4] mb-4 transition-all duration-500 ease-out 
+                  ${!isOpening && !isConfirming ? 'hover:-translate-y-2 hover:shadow-[0_30px_60px_-15px_rgba(0,0,0,0.35)]' : ''} 
+                  shadow-[0_12px_30px_-8px_rgba(0,0,0,0.15)] rounded-lg overflow-hidden border
+                  ${isDark ? 'bg-zinc-800 border-white/5' : 'bg-white border-gray-100'}`}
                 >
                   <img
                     src={book.coverUrl || ""}
                     alt={book.name || "Book Cover"}
-                    className="w-full h-full object-cover transition-transform duration-1000 group-hover:scale-110"
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                   />
 
-                  <div className="absolute inset-y-0 left-0 w-[12px] bg-black/10 backdrop-blur-[2px] z-20 pointer-events-none" />
-                  <div className="absolute inset-y-0 left-[12px] w-px bg-white/10 z-20 pointer-events-none" />
+                  {/* Book spine effect */}
+                  <div className="absolute inset-y-0 left-0 w-[8px] bg-black/10 z-20 pointer-events-none" />
+                  <div className="absolute inset-y-0 left-[8px] w-px bg-white/5 z-20 pointer-events-none" />
 
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  {/* Hover gradient */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
 
+                  {/* Action buttons */}
                   {!isOpening && !isConfirming && (
-                    <div className="absolute top-4 right-4 flex flex-col gap-3 opacity-0 group-hover:opacity-100 transition-all duration-300 z-30 translate-x-4 group-hover:translate-x-0">
+                    <div className="absolute top-3 right-3 flex flex-col gap-2 opacity-0 group-hover:opacity-100 transition-all duration-200 z-30 translate-y-1 group-hover:translate-y-0">
                       <button
                         onClick={(e) => { e.stopPropagation(); onToggleFavorite(book.id); }}
-                        className={`p-3.5 backdrop-blur-md rounded-full transition-all duration-300 active:scale-90 shadow-2xl border border-white/20
+                        className={`p-2 backdrop-blur-md rounded-full transition-all duration-200 active:scale-90 shadow-lg border border-white/20
                           ${isFav ? 'bg-white text-red-500' : 'bg-black/40 text-white hover:bg-black/60'}
                         `}
                       >
-                        <Heart size={18} className={isFav ? 'fill-red-500' : ''} />
+                        <Heart size={14} className={isFav ? 'fill-red-500' : ''} />
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); setConfirmingDeleteId(book.id); }}
-                        className="p-3.5 bg-black/40 hover:bg-red-600 backdrop-blur-md text-white rounded-full transition-all duration-300 shadow-2xl border border-white/20"
+                        className="p-2 bg-black/40 hover:bg-red-600 backdrop-blur-md text-white rounded-full transition-all duration-200 shadow-lg border border-white/20"
                       >
-                        <Trash2 size={18} />
+                        <Trash2 size={14} />
                       </button>
                     </div>
                   )}
 
+                  {/* Delete confirmation */}
                   {isConfirming && (
-                    <div className="absolute inset-0 bg-black/95 backdrop-blur-md z-40 flex flex-col items-center justify-center p-6 text-center animate-in zoom-in duration-300">
-                      <span className="text-white text-xs font-black mb-8 uppercase tracking-[0.25em] opacity-70">Remove Book?</span>
-                      <div className="flex gap-5">
+                    <div className="absolute inset-0 bg-black/90 backdrop-blur-md z-40 flex flex-col items-center justify-center p-4 text-center animate-in zoom-in duration-200">
+                      <span className="text-white text-[10px] font-black mb-5 uppercase tracking-[0.2em] opacity-70">Remove?</span>
+                      <div className="flex gap-3">
                         <button
                           onClick={(e) => { e.stopPropagation(); onRemoveBook(book.id); setConfirmingDeleteId(null); }}
-                          className="w-14 h-14 bg-red-600 text-white rounded-[20px] flex items-center justify-center active:scale-90 transition-transform shadow-lg"
+                          className="w-10 h-10 bg-red-600 text-white rounded-xl flex items-center justify-center active:scale-90 transition-transform shadow-lg"
                         >
-                          <Check size={24} strokeWidth={3} />
+                          <Check size={18} strokeWidth={3} />
                         </button>
                         <button
                           onClick={(e) => { e.stopPropagation(); setConfirmingDeleteId(null); }}
-                          className="w-14 h-14 bg-white/10 text-white rounded-[20px] flex items-center justify-center active:scale-90 transition-transform"
+                          className="w-10 h-10 bg-white/10 text-white rounded-xl flex items-center justify-center active:scale-90 transition-transform"
                         >
-                          <X size={24} strokeWidth={3} />
+                          <X size={18} strokeWidth={3} />
                         </button>
                       </div>
                     </div>
                   )}
 
+                  {/* Opening state */}
                   {isOpening && (
                     <div className="absolute inset-0 bg-white/10 backdrop-blur-md z-50 flex items-center justify-center">
-                      <div className="w-24 h-1.5 bg-orange-600 rounded-full animate-pulse shadow-[0_0_25px_rgba(249,115,22,0.7)]" />
+                      <div className="w-16 h-1 bg-orange-500 rounded-full animate-pulse shadow-[0_0_20px_rgba(249,115,22,0.6)]" />
                     </div>
                   )}
                 </div>
 
-                <div className="px-2 space-y-3">
-                  <h3 className={`text-[17px] font-extrabold truncate leading-tight tracking-tight transition-all duration-300 ${isDark ? 'text-white' : 'text-[#1D1D1F] group-hover:text-orange-600 group-hover:translate-x-1.5'}`}>
+                {/* Book Info */}
+                <div className="px-0.5 space-y-1.5">
+                  <h3 className={`text-sm font-bold truncate leading-tight tracking-tight ${isDark ? 'text-white' : 'text-[#1D1D1F]'}`}>
                     {(book.name || "Untitled").replace('.pdf', '')}
                   </h3>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <p className={`text-[10px] font-black uppercase tracking-widest ${isDark ? 'text-zinc-500' : 'text-gray-500'}`}>
-                      {book.totalPages || 0} PAGES
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className={`text-[10px] font-bold uppercase tracking-widest ${isDark ? 'text-zinc-500' : 'text-gray-400'}`}>
+                      {book.totalPages || 0} Pages
                     </p>
-                    <CategoryTag category={book.category} />
+                    <CategoryTag category={book.category} isDark={isDark} />
                   </div>
                 </div>
               </div>
             );
           })}
 
+          {/* Empty state */}
           {books.length === 0 && (
             <button
               onClick={onAddNew}
-              className={`group aspect-[3/4.2] border-2 border-dashed rounded-[20px] flex flex-col items-center justify-center gap-5 transition-all duration-500 shadow-inner ${isDark ? 'border-white/10 hover:border-orange-500 hover:bg-orange-500/5 text-zinc-600' : 'border-gray-200 hover:border-orange-400 hover:bg-white hover:shadow-2xl text-gray-400'}`}
+              className={`group aspect-[3/4] border-2 border-dashed rounded-2xl flex flex-col items-center justify-center gap-4 transition-all duration-300 ${isDark ? 'border-white/[0.06] hover:border-orange-500/30 hover:bg-orange-500/5 text-zinc-600' : 'border-gray-200 hover:border-orange-400 hover:bg-orange-50/50 text-gray-400'}`}
             >
-              <div className="p-7 rounded-full bg-gray-100 group-hover:bg-orange-100 transition-all duration-500 group-hover:scale-110">
-                <Plus size={40} strokeWidth={2} className="group-hover:text-orange-600" />
+              <div className={`p-5 rounded-2xl transition-all duration-300 ${isDark ? 'bg-zinc-800 group-hover:bg-orange-500/10' : 'bg-gray-100 group-hover:bg-orange-100'}`}>
+                <Plus size={28} strokeWidth={1.5} className="group-hover:text-orange-500 transition-colors" />
               </div>
-              <span className="text-xs font-black uppercase tracking-widest group-hover:text-orange-600 transition-colors">Import PDF Library</span>
+              <span className="text-[10px] font-black uppercase tracking-widest group-hover:text-orange-500 transition-colors">Import PDF</span>
             </button>
           )}
         </div>

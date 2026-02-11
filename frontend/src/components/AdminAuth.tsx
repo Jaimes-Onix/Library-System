@@ -1,7 +1,5 @@
 import React, { useState } from 'react';
 import { ShieldCheck, Eye, EyeOff, Loader2, ArrowRight } from 'lucide-react';
-import { supabase } from '../lib/supabase';
-import { showSuccessToast } from '../utils/toast';
 import { useNavigate } from 'react-router-dom';
 import VantaFog from './VantaFog';
 
@@ -17,47 +15,15 @@ const AdminAuth: React.FC = () => {
         setIsLoading(true);
         setError('');
 
-        try {
-            const email = formData.email.trim();
-            const password = formData.password.trim();
-
-            const { error } = await supabase.auth.signInWithPassword({
-                email,
-                password,
-            });
-            if (error) {
-                if (error.status === 400) {
-                    throw new Error("Invalid email or password. Please check your credentials.");
-                }
-                throw error;
-            }
-
-            // Ensure admin profile exists with correct role
-            const { data: { user: authUser } } = await supabase.auth.getUser();
-            if (authUser) {
-                await supabase.from('profiles').upsert({
-                    id: authUser.id,
-                    email: authUser.email,
-                    role: 'admin',
-                    name: authUser.user_metadata?.full_name || 'Admin User',
-                    status: 'active'
-                });
-            }
-
-            setTimeout(() => {
-                showSuccessToast('Verified. Entering Dashboard...');
-                navigate('/admin/dashboard');
-            }, 1000);
-        } catch (err: any) {
-            setError(err.message || 'Authentication failed');
+        // Placeholder for future database integration
+        setTimeout(() => {
+            setError('Database not configured. Please set up your database first.');
             setIsLoading(false);
-        }
-        // Note: We don't set isLoading(false) on success immediately to prevent UI flicker before redirect
+        }, 1000);
     };
 
     return (
         <div className="min-h-screen bg-[#050505] flex items-center justify-center p-4 relative overflow-hidden">
-            {/* Vanta FOG Background */}
             <VantaFog />
 
             <div className="w-full max-w-md bg-[#111]/80 backdrop-blur-xl p-10 rounded-[32px] border border-white/10 shadow-2xl relative z-10">

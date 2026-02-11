@@ -57,86 +57,104 @@ const Upload: React.FC<UploadProps> = ({ onFilesSelect, onBack, isLoading, statu
   );
 
   return (
-    <div className={`flex flex-col items-center justify-center h-full w-full px-8 fade-in relative ${isDark ? 'text-white' : 'text-gray-900'}`}>
+    <div className={`flex flex-col items-center justify-center h-full w-full px-8 relative ${isDark ? 'text-white' : 'text-gray-900'}`}>
+      {/* Back button */}
       {onBack && !isLoading && (
         <button
           onClick={onBack}
-          className={`absolute top-12 left-12 flex items-center gap-2 transition-colors font-bold text-base group ${isDark ? 'text-gray-500 hover:text-white' : 'text-gray-400 hover:text-gray-900'}`}
+          className={`absolute top-8 left-8 flex items-center gap-1.5 transition-colors font-semibold text-sm group ${isDark ? 'text-gray-500 hover:text-white' : 'text-gray-400 hover:text-gray-900'}`}
         >
-          <ChevronLeft size={22} className="group-hover:-translate-x-1 transition-transform" />
+          <ChevronLeft size={18} className="group-hover:-translate-x-0.5 transition-transform" />
           Back to Library
         </button>
       )}
 
-      <div className="max-w-2xl w-full text-center">
-        <h1 className={`text-5xl font-black mb-4 tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
-          Digital Flip Book
-        </h1>
-        <p className={`mb-14 text-xl font-medium ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-          Transform your PDFs into elegant flipbooks.
-        </p>
-
-        <div
-          onDragOver={handleDragOver}
-          onDragLeave={handleDragLeave}
-          onDrop={handleDrop}
-          className={`
-            relative group
-            w-full aspect-[4/3] rounded-[48px]
-            border-2 border-dashed transition-all duration-300 ease-out
-            flex flex-col items-center justify-center gap-8
-            ${isDark ? 'bg-zinc-900 border-zinc-800 shadow-none' : 'bg-white shadow-2xl shadow-gray-200/50 border-gray-200'}
-            ${isLoading ? (isDark ? 'border-blue-900 bg-blue-950/20' : 'border-blue-200 bg-blue-50/50') + ' cursor-wait' : ''}
-            ${!isLoading && isDragging 
-              ? (isDark ? 'border-blue-500 bg-blue-500/10 scale-[1.02]' : 'border-blue-500 bg-blue-50 scale-[1.02]') 
-              : `hover:${isDark ? 'border-zinc-700 hover:bg-zinc-800/50' : 'border-gray-300 hover:bg-gray-50'}`
-            }
-          `}
-        >
-          {isLoading ? (
-            <div className="flex flex-col items-center gap-6 animate-in fade-in zoom-in duration-300">
-              <div className="relative">
-                <div className={`absolute inset-0 rounded-full blur-xl animate-pulse ${isDark ? 'bg-blue-500/30' : 'bg-blue-400/30'}`}></div>
-                <Loader2 className={`relative w-16 h-16 animate-spin ${isDark ? 'text-blue-400' : 'text-blue-600'}`} strokeWidth={2} />
-              </div>
-              <span className={`font-bold text-2xl tracking-wide px-12 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
-                {statusMessage || "Processing..."}
-              </span>
-            </div>
-          ) : (
-            <>
-              <div className={`
-                p-8 rounded-[32px] transition-colors duration-300
-                ${isDragging ? (isDark ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-600') : (isDark ? 'bg-zinc-800 text-zinc-500 group-hover:bg-zinc-700' : 'bg-gray-100 text-gray-500 group-hover:bg-white group-hover:shadow-xl')}
-              `}>
-                <UploadCloud size={64} strokeWidth={1.5} />
-              </div>
-
-              <div className="space-y-2">
-                <p className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  Drop one or more PDFs here
-                </p>
-                <p className={`text-lg font-medium ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                  or click to browse multiple files
-                </p>
-              </div>
-
-              <input
-                type="file"
-                accept="application/pdf"
-                multiple
-                onChange={handleFileInput}
-                disabled={isLoading}
-                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
-              />
-            </>
-          )}
+      {/* Main Card */}
+      <div className={`w-full max-w-lg rounded-3xl overflow-hidden border backdrop-blur-xl transition-all duration-500 ${
+        isDark 
+          ? 'bg-zinc-900/80 border-white/[0.08] shadow-2xl' 
+          : 'bg-white/90 border-gray-200/60 shadow-2xl shadow-gray-200/40'
+      }`}>
+        {/* Card Header */}
+        <div className="px-8 pt-10 pb-6 text-center">
+          <h1 className={`text-2xl font-bold tracking-tight mb-1.5 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+            Library System
+          </h1>
+          <p className={`text-sm font-medium ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+            Create premium digital flipbooks from PDF.
+          </p>
         </div>
-        
+
+        {/* Upload Area */}
+        <div className="px-8 pb-6">
+          <div
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            className={`
+              relative group w-full aspect-[4/3] rounded-2xl
+              border-2 border-dashed transition-all duration-300
+              flex flex-col items-center justify-center gap-5
+              ${isDark 
+                ? 'bg-zinc-800/60 border-zinc-700/60' 
+                : 'bg-gray-50 border-gray-200'}
+              ${isLoading 
+                ? (isDark ? 'border-blue-800 bg-blue-950/30' : 'border-blue-200 bg-blue-50/50') + ' cursor-wait' 
+                : ''}
+              ${!isLoading && isDragging 
+                ? (isDark ? 'border-blue-500 bg-blue-500/10 scale-[1.01]' : 'border-blue-500 bg-blue-50 scale-[1.01]') 
+                : !isLoading ? (isDark ? 'hover:border-zinc-600 hover:bg-zinc-800/80' : 'hover:border-gray-300 hover:bg-gray-100/50') : ''
+              }
+            `}
+          >
+            {isLoading ? (
+              <div className="flex flex-col items-center gap-4 animate-in fade-in zoom-in duration-300">
+                <div className="relative">
+                  <div className={`absolute inset-0 rounded-full blur-xl animate-pulse ${isDark ? 'bg-blue-500/20' : 'bg-blue-400/20'}`} />
+                  <Loader2 className={`relative w-12 h-12 animate-spin ${isDark ? 'text-blue-400' : 'text-blue-600'}`} strokeWidth={2} />
+                </div>
+                <span className={`font-semibold text-base px-6 ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>
+                  {statusMessage || "Processing..."}
+                </span>
+              </div>
+            ) : (
+              <>
+                {/* Upload Icon */}
+                <div className={`p-5 rounded-2xl transition-all duration-300 ${
+                  isDragging 
+                    ? (isDark ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-100 text-blue-600') 
+                    : (isDark ? 'bg-zinc-700/80 text-zinc-400 group-hover:bg-zinc-700 group-hover:text-zinc-300' : 'bg-gray-100 text-gray-400 group-hover:bg-white group-hover:text-gray-600 group-hover:shadow-lg')
+                }`}>
+                  <UploadCloud size={36} strokeWidth={1.5} />
+                </div>
+
+                <div className="text-center space-y-1">
+                  <p className={`text-base font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    Import New PDF
+                  </p>
+                  <p className={`text-sm font-medium ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                    Select files to add to your library
+                  </p>
+                </div>
+
+                <input
+                  type="file"
+                  accept="application/pdf"
+                  multiple
+                  onChange={handleFileInput}
+                  disabled={isLoading}
+                  className="absolute inset-0 w-full h-full opacity-0 cursor-pointer disabled:cursor-not-allowed"
+                />
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Footer */}
         {!isLoading && (
-          <div className={`mt-10 flex items-center justify-center gap-3 text-lg font-medium ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-            <FileText size={22} />
-            <span>Supported Format: PDF</span>
+          <div className={`px-8 pb-8 flex items-center justify-center gap-2 ${isDark ? 'text-zinc-600' : 'text-gray-400'}`}>
+            <FileText size={14} />
+            <span className="text-xs font-semibold">Library System Standard PDF Support</span>
           </div>
         )}
       </div>

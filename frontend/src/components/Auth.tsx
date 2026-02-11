@@ -1,54 +1,20 @@
 import React, { useState } from 'react';
 import { BookOpen, ArrowRight, Mail, Lock, User, Loader2, ShieldCheck, Eye, EyeOff } from 'lucide-react';
-import { UserProfile, QRVerificationState } from '../types';
-import CodeVerification from './CodeVerification';
+import { UserProfile } from '../types';
 import ErrorModal from './ErrorModal';
 import VantaFog from './VantaFog';
-import { showSuccessToast, showInfoToast } from '../utils/toast';
+import { showSuccessToast } from '../utils/toast';
 
 interface AuthProps {
   onAuthSuccess: (profile: UserProfile) => void;
   onBack?: () => void;
 }
 
-import { supabase } from '../lib/supabase';
-import { useAuth } from '../context/AuthContext';
-
-// Map Supabase errors to friendly messages
-const getFriendlyErrorMessage = (error: any): string => {
-  const message = error?.message || '';
-  console.log('[AUTH] Mapping error:', message);
-
-  if (message.includes('Invalid login credentials')) {
-    return 'The email or password you entered is incorrect.';
-  }
-  if (message.includes('Email not confirmed')) {
-    return 'Please verify your email before signing in.';
-  }
-  if (message.includes('User not found')) {
-    return 'No account found with this email.';
-  }
-  if (message.includes('already registered') || message.includes('already exists')) {
-    return 'An account with this email already exists.';
-  }
-  if (message.includes('Password') && message.includes('weak')) {
-    return 'Your password is too weak. Try at least 6 characters.';
-  }
-  if (message.includes('Network') || message.includes('fetch')) {
-    return 'Unable to connect. Please check your internet.';
-  }
-
-  // Generic fallback
-  return message || 'An unexpected error occurred. Please try again.';
-};
-
 const Auth: React.FC<AuthProps> = ({ onAuthSuccess, onBack }) => {
-  const { user, refreshProfile } = useAuth();
   const [mode, setMode] = useState<'signin' | 'signup'>('signin');
   const [authType, setAuthType] = useState<'student' | 'admin'>('student');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [qrVerification, setQrVerification] = useState<QRVerificationState | null>(null);
   const [errorModal, setErrorModal] = useState({ isOpen: false, message: '' });
   const [formData, setFormData] = useState({
     user: '',
@@ -65,11 +31,9 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess, onBack }) => {
     return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
   };
 
-  /* Validate form inputs */
   const validateForm = (): boolean => {
     const email = formData.email || formData.user;
 
-    // Check for empty fields
     if (!email.trim()) {
       setErrorModal({ isOpen: true, message: 'Please enter your email address' });
       return false;
@@ -99,14 +63,12 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess, onBack }) => {
       }
     }
 
-    // Validate email format (basic check)
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (email.toLowerCase() !== 'admin' && !emailRegex.test(email)) {
       setErrorModal({ isOpen: true, message: 'Please enter a valid email address' });
       return false;
     }
 
-    // Check password strength for signup
     if (mode === 'signup') {
       if (formData.password.length < 6) {
         setErrorModal({ isOpen: true, message: 'Password must be at least 6 characters' });
@@ -117,215 +79,24 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess, onBack }) => {
     return true;
   };
 
-  /* Helper to Create Profile & Upload Photo */
-  const createProfile = async (user: any, photoFile: File | null, formDataValues: any) => {
-    let photoUrl = null;
-
-    // Upload photo if provided
-    if (photoFile) {
-      try {
-        const fileExt = photoFile.name.split('.').pop();
-        const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-        const { error: uploadError } = await supabase.storage
-          .from('avatars') // Ensure this bucket exists/public
-          .upload(fileName, photoFile);
-
-        if (!uploadError) {
-          const { data: { publicUrl } } = supabase.storage
-            .from('avatars')
-            .getPublicUrl(fileName);
-          photoUrl = publicUrl;
-        } else {
-          console.warn("Photo upload warning:", uploadError);
-        }
-      } catch (e) {
-        console.warn("Photo upload exception:", e);
-      }
-    }
-
-    // Explicitly use the form data for maximum reliability
-    const role = authType === 'admin' ? 'admin' : 'user';
-
-    console.log("[AUTH] Creating profile for user:", user.id);
-    console.log("[AUTH] Profile Data:", {
-      name: formDataValues.name,
-      student_id: formDataValues.studentId,
-      grade: formDataValues.gradeSection,
-      course: formDataValues.course
-    });
-
-    const { error: profileError } = await supabase
-      .from('profiles')
-      .upsert({
-        id: user.id,
-        email: user.email,
-        name: formDataValues.name || user.email,
-        role: role,
-        student_id: formDataValues.studentId || null,
-        grade_section: formDataValues.gradeSection || null,
-        course: formDataValues.course || null,
-        status: 'active',
-        photo_url: photoUrl,
-        created_at: new Date().toISOString()
-      });
-
-    if (profileError) {
-      console.error("CRITICAL: Profile creation failed:", profileError);
-    } else {
-      console.log("[AUTH] ✅ Profile created successfully via Upsert");
-    }
-  };
-
-  /* New Handle Submit using Supabase Native Auth */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Validate before submitting
     if (!validateForm()) {
       return;
     }
 
     setIsLoading(true);
-    console.log('[AUTH] ========== AUTHENTICATION ATTEMPT ==========');
-    console.log('[AUTH] Mode:', mode);
 
-    try {
-      let email = formData.email || formData.user;
-      if (email.toLowerCase() === 'admin') email = 'admin@flipbook.com';
-
-      console.log('[AUTH] Email:', email);
-
-      if (mode === 'signin') {
-        console.log('[AUTH] Attempting sign in...');
-        const { data, error } = await supabase.auth.signInWithPassword({
-          email,
-          password: formData.password,
-        });
-
-        console.log('[AUTH] Sign in response:', { data, error });
-
-        if (error) {
-          console.error('[AUTH] Sign in failed:', error);
-          const friendlyMessage = getFriendlyErrorMessage(error);
-          setErrorModal({ isOpen: true, message: friendlyMessage });
-          setIsLoading(false);
-          return;
-        }
-
-        console.log('[AUTH] Sign in successful!');
-        showSuccessToast('Welcome back! Signing you in...');
-      } else {
-        // Sign Up with Supabase (triggers verification email)
-        console.log('[AUTH] Attempting sign up...');
-        const { data, error } = await supabase.auth.signUp({
-          email,
-          password: formData.password,
-          options: {
-            data: {
-              full_name: formData.name,
-              student_id: formData.studentId,
-              grade_section: formData.gradeSection,
-              course: formData.course,
-            }
-          }
-        });
-
-        console.log('[AUTH] Sign up response:', { data, error });
-
-        if (error) {
-          console.error('[AUTH] Sign up failed:', error);
-          const friendlyMessage = getFriendlyErrorMessage(error);
-          setErrorModal({ isOpen: true, message: friendlyMessage });
-          setIsLoading(false);
-          return;
-        }
-
-        // If signup is successful, Supabase sends the email.
-        // We show the verification UI to let the user enter the code.
-        // Identify if the user is new or existing based on response
-        if (data.user && !data.session) {
-          console.log('[AUTH] Verification required, showing code entry');
-          showInfoToast(`Verification code sent to ${email}`);
-          setQrVerification({
-            email,
-            token: '', // No token needed for local state, Supabase handles it
-            status: 'pending',
-            expiresAt: Date.now() + 5 * 60 * 1000
-          });
-        } else if (data.session) {
-          console.log('[AUTH] Sign up successful with immediate session');
-
-          // UPLOAD PHOTO & CREATE PROFILE IMMEDIATELY
-          await createProfile(data.user!, formData.photo, formData);
-
-          // REFRESH CONTEXT STATE TO GET THE NEW DATA
-          await refreshProfile();
-
-          showSuccessToast('Account created successfully!');
-          onAuthSuccess({
-            id: data.user!.id,
-            email: data.user!.email!,
-            name: formData.name,
-            role: 'user', // Default
-            created_at: new Date().toISOString(),
-            initials: getInitials(formData.name),
-            photoUrl: undefined,
-            student_id: formData.studentId,
-            grade_section: formData.gradeSection,
-            course: formData.course
-          });
-        }
-      }
-    } catch (err: any) {
-      console.error('[AUTH] Unexpected error:', err);
-      const friendlyMessage = getFriendlyErrorMessage(err);
-      setErrorModal({ isOpen: true, message: friendlyMessage });
-    } finally {
-      setIsLoading(false);
-      console.log('[AUTH] ========== END AUTHENTICATION ==========');
-    }
-  };
-
-  const handleVerifyOtp = async (code: string) => {
-    if (!qrVerification) return;
-
-    try {
-      const { data, error } = await supabase.auth.verifyOtp({
-        email: qrVerification.email,
-        token: code,
-        type: 'signup'
+    // Placeholder for future database integration
+    setTimeout(() => {
+      setErrorModal({
+        isOpen: true,
+        message: 'Database not configured. Please set up your database first.'
       });
-
-      if (error) throw error;
-
-      if (data.session && data.user) {
-        // UPLOAD PHOTO & CREATE PROFILE AFTER VERIFICATION
-        await createProfile(data.user, formData.photo, formData);
-
-        // REFRESH CONTEXT STATE TO GET THE NEW DATA
-        await refreshProfile();
-
-        showSuccessToast('Email verified successfully!');
-        setQrVerification(null);
-        // AuthContext should pick up the session change via onAuthStateChange, 
-        // but refreshProfile ensures we have the data right NOW.
-      }
-    } catch (err: any) {
-      console.error("Verification failed:", err);
-      throw err; // Propagate to CodeVerification to show error
-    }
+      setIsLoading(false);
+    }, 1000);
   };
-
-  if (qrVerification) {
-    return (
-      <CodeVerification
-        theme="dark"
-        email={qrVerification.email}
-        onVerifyCode={handleVerifyOtp}
-        onCancel={() => setQrVerification(null)}
-      />
-    );
-  }
 
   return (
     <>
@@ -338,10 +109,8 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess, onBack }) => {
       />
 
       <div className="fixed inset-0 flex items-center justify-center bg-[#050505] overflow-hidden">
-        {/* Vanta FOG Background */}
         <VantaFog />
 
-        {/* Back Button */}
         {onBack && (
           <button
             onClick={onBack}
@@ -353,7 +122,6 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess, onBack }) => {
 
         <div className="relative w-full max-w-md px-6 animate-in fade-in zoom-in duration-700 z-10">
           <div className="bg-[#111111]/80 backdrop-blur-2xl p-10 rounded-[32px] shadow-2xl shadow-black border border-white/10 relative overflow-hidden">
-            {/* Top Orange Line */}
             <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-orange-600 via-red-500 to-orange-600 opacity-80" />
 
             <div className="flex flex-col items-center text-center mb-10">
@@ -362,7 +130,6 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess, onBack }) => {
                 {authType === 'admin' ? <ShieldCheck size={32} strokeWidth={2.5} className="relative z-10" /> : <BookOpen size={32} strokeWidth={2.5} className="relative z-10" />}
               </div>
 
-              {/* User Type Toggle */}
               <div className="flex p-1 bg-zinc-900/80 border border-white/5 rounded-full mb-8 w-full max-w-[240px]">
                 <button
                   onClick={() => { setMode('signin'); setAuthType('student'); }}
@@ -526,7 +293,6 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess, onBack }) => {
               </button>
             </form>
 
-            {/* User Type Toggle (Always Visible) */}
             <div className="mt-8 pt-8 border-t border-white/5 text-center">
               <button
                 onClick={() => {

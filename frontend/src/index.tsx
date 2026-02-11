@@ -19,7 +19,7 @@ try {
   console.error("PDF.js worker initialization warning:", e);
 }
 
-// Suppress benign "AbortError" from Supabase/React Strict Mode
+// Suppress benign "AbortError" from React Strict Mode
 window.addEventListener('unhandledrejection', (event) => {
   if (
     event.reason?.name === 'AbortError' ||
