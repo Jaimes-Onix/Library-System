@@ -1,86 +1,58 @@
 
-
-import React, { Component, useState, useRef, useEffect, useMemo, ErrorInfo, ReactNode } from 'react';
-import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
+import React, { useState, useRef, useEffect, useMemo, ErrorInfo, ReactNode } from 'react';
+import { Routes, Route, Navigate, useNavigate, useLocation, Outlet } from 'react-router-dom';
 import { GoogleGenAI } from "@google/genai";
-import { BookOpen, RefreshCw, ShieldAlert, AlertCircle, Loader2 } from 'lucide-react';
+import { BookOpen, RefreshCw, AlertCircle, Loader2 } from 'lucide-react';
 import Header from './components/Header';
 import Upload from './components/Upload';
 import BookViewer from './components/BookViewer';
 import Controls from './components/Controls';
 import Library from './components/Library';
+import LibraryPage from './components/LibraryPage';
 import Sidebar from './components/Sidebar';
 import LibraryActionModal from './components/LibraryActionModal';
 import CategorySelectionModal from './components/CategorySelectionModal';
 import FeaturedCarousel from './components/FeaturedCarousel';
 import AccountSettingsModal from './components/AccountSettingsModal';
 import Auth from './components/Auth';
-import Home from './components/Home';
 import DashboardHome from './components/DashboardHome';
 import ExamplesPage from './components/ExamplesPage';
 import FeaturesPage from './components/FeaturesPage';
-import { getDocument } from './utils/pdfUtils';
-import { BookRef, LibraryBook, UserProfile, Category, Theme, AppView } from './types';
+import { BookRef, LibraryBook, UserProfile, Category, Theme } from './types';
 import { Toaster } from './utils/toast';
 import { useAuth } from './context/AuthContext';
 import AdminDashboard from './components/AdminDashboard';
 import AdminAuth from './components/AdminAuth';
 import VantaFog from './components/VantaFog';
 import Landing from './components/Landing';
+import Home from './components/Home';
 
-
-const generateSafeId = () => Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
-
+// --- Error Boundary ---
 interface EBProps { children?: ReactNode }
-interface EBState {
-  hasError: boolean;
-  error: Error | null;
-  errorInfo: ErrorInfo | null
-}
+interface EBState { hasError: boolean; error: Error | null; errorInfo: ErrorInfo | null }
 
-// Fixed ErrorBoundary by using React.Component explicitly to resolve type inheritance issues
 class ErrorBoundary extends React.Component<EBProps, EBState> {
   constructor(props: EBProps) {
     super(props);
     this.state = { hasError: false, error: null, errorInfo: null };
   }
-
   static getDerivedStateFromError(error: Error): Partial<EBState> {
     return { hasError: true, error };
   }
-
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     this.setState({ errorInfo });
     console.error("APP_CRASH_REPORTED:", error, errorInfo);
   }
-
   handleReset = () => window.location.reload();
-
   render() {
     if (this.state.hasError) {
       return (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-white p-12 text-[#1d1d1f]">
           <div className="max-w-xl w-full text-center">
-            <div className="mb-8 inline-flex p-6 bg-red-50 text-red-500 rounded-[32px] animate-pulse">
-              <AlertCircle size={48} strokeWidth={2.5} />
-            </div>
             <h1 className="text-4xl font-black mb-4 tracking-tight">System Exception</h1>
-            <p className="text-lg text-gray-500 mb-8 font-medium">
-              The interface encountered a fatal error during rendering.
-            </p>
-
-            <div className="bg-gray-50 p-6 rounded-[24px] text-left font-mono text-xs mb-10 overflow-auto max-h-[300px] border border-gray-100 text-red-600">
-              <p className="font-black mb-2 uppercase tracking-widest text-gray-400">Error Details:</p>
-              <p className="font-bold mb-4">{this.state.error?.toString()}</p>
-              <p className="opacity-70">{this.state.error?.stack}</p>
-            </div>
-
-            <button
-              onClick={this.handleReset}
-              className="px-12 py-5 bg-black text-white rounded-[22px] font-black flex items-center gap-3 mx-auto transition-all active:scale-95 shadow-2xl hover:bg-gray-800"
-            >
-              <RefreshCw size={22} strokeWidth={2.5} />
-              Rebuild Interface
+            <p className="text-lg text-gray-500 mb-8 font-medium">The interface encountered a fatal error.</p>
+            <button onClick={this.handleReset} className="px-12 py-5 bg-black text-white rounded-[22px] font-black flex items-center gap-3 mx-auto transition-all active:scale-95 shadow-2xl hover:bg-gray-800">
+              <RefreshCw size={22} strokeWidth={2.5} /> Rebuild Interface
             </button>
           </div>
         </div>
@@ -90,319 +62,172 @@ class ErrorBoundary extends React.Component<EBProps, EBState> {
   }
 }
 
-const FlipBookAppContent: React.FC = () => {
-  const { user, profile, isAdmin, signOut, signIn } = useAuth();
-  const [isShowingAuth, setIsShowingAuth] = useState(false);
+// --- Layout Component ---
+const AppLayout = ({
+  children,
+  theme,
+  userProfile,
+  onLogout,
+  onToggleTheme,
+  onOpenSettings,
+  isAuthenticated,
+  onAuth
+}: any) => {
+  const location = useLocation();
+  const isPublicPage = ['/', '/home', '/examples', '/features', '/login', '/signup'].includes(location.pathname);
 
+  // Show sidebar only if authenticated and NOT on strictly public landing pages/login
+  const showSidebar = isAuthenticated && !isPublicPage && !location.pathname.startsWith('/reader') && !location.pathname.startsWith('/admin');
+
+  return (
+    <div className={`flex flex-col min-h-screen w-full transition-colors duration-700 selection:bg-blue-500 selection:text-white relative ${theme === 'dark' ? 'bg-[#0a0a0a] text-white' : 'bg-[#f5f5f7] text-gray-900'}`}>
+      {theme === 'dark' && !isPublicPage && <VantaFog />}
+
+      <div className={`relative z-10 flex min-h-screen w-full ${showSidebar ? 'flex-row' : 'flex-col'}`}>
+        {showSidebar && (
+          <div className="sticky top-0 h-screen flex-shrink-0">
+            <Sidebar
+              theme={theme}
+              userProfile={userProfile}
+              onLogout={onLogout}
+              onToggleTheme={onToggleTheme}
+              onOpenSettings={onOpenSettings}
+            />
+          </div>
+        )}
+
+        <div className="flex-1 flex flex-col min-w-0 relative">
+          {!location.pathname.startsWith('/reader') && !location.pathname.startsWith('/admin') && !['/login', '/signup'].includes(location.pathname) && (
+            <Header
+              theme={theme}
+              isAuthenticated={isAuthenticated}
+              userProfile={userProfile}
+              onAuth={onAuth}
+              onOpenSettings={onOpenSettings}
+              hasSidebar={showSidebar}
+            />
+          )}
+
+          <main className={`flex-1 relative transition-colors duration-700 ${theme === 'dark' ? 'bg-transparent' : 'bg-transparent'} ${!isPublicPage ? 'h-full overflow-hidden' : ''} ${!showSidebar && !isPublicPage ? 'pt-14' : ''}`}>
+            <Outlet />
+            {children}
+          </main>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const App: React.FC = () => {
+  const { user, profile, isAdmin, loading, signOut } = useAuth();
   const [theme, setTheme] = useState<Theme>('dark');
-  const [view, setView] = useState<AppView | 'admin'>('landing');
+  const navigate = useNavigate();
 
-  useEffect(() => {
-    console.log('[APP] View changed to:', view);
-  }, [view]);
-
-  const handleSetView = (newView: AppView | 'admin') => {
-    console.log('[APP] Setting view to:', newView);
-    setView(newView);
-  };
-
-  // Auto-redirect to landing when user logs out
-  useEffect(() => {
-    if (!user && view !== 'landing' && view !== 'examples' && view !== 'features') {
-      console.log('[APP] User logged out, redirecting to landing');
-      setView('landing');
-      setSelectedBook(null);
-      setPendingBook(null);
-    }
-  }, [user, view]);
-
-  const [readerMode, setReaderMode] = useState<'manual' | 'preview'>('manual');
+  // State lifted from FlipBookAppContent
   const [books, setBooks] = useState<LibraryBook[]>([]);
   const [selectedBook, setSelectedBook] = useState<LibraryBook | null>(null);
   const [pendingBook, setPendingBook] = useState<LibraryBook | null>(null);
-
-  const [categorizingBooks, setCategorizingBooks] = useState<LibraryBook[]>([]);
-  const [currentCategorizingIndex, setCurrentCategorizingIndex] = useState(-1);
-
+  const [readerMode, setReaderMode] = useState<'manual' | 'preview'>('manual');
   const [currentPage, setCurrentPage] = useState(0);
-  const [loadingStatus, setLoadingStatus] = useState<string | null>(null);
-  const [isSummarizing, setIsSummarizing] = useState(false);
   const [zoomLevel, setZoomLevel] = useState(1);
-  const [libraryFilter, setLibraryFilter] = useState('all');
+  const [isSummarizing, setIsSummarizing] = useState(false);
   const [isAccountSettingsOpen, setIsAccountSettingsOpen] = useState(false);
-
-  // Close auth modal when user logs in (but stay on current page)
-  useEffect(() => {
-    if (user) {
-      setIsShowingAuth(false);
-    }
-  }, [user]);
-
-  // Fetch books from Supabase
-  useEffect(() => {
-    if (user) {
-      fetchBooks();
-    } else {
-      setBooks([]);
-    }
-  }, [user]);
-
-  const fetchBooks = async () => {
-    // Placeholder for future database integration
-    console.log('Database not configured. Books will be loaded when database is set up.');
-  };
 
   const bookRef = useRef<BookRef | null>(null);
 
   const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
 
-  const triggerAutoSummary = async (bookId: string, doc: any) => {
-    if (!process.env.API_KEY) return;
-    try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const page = await doc.getPage(1);
-      const textContent = await page.getTextContent();
-      const text = textContent.items.map((i: any) => i.str).join(' ').slice(0, 1500);
-
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: `Analyze this text and write a single, sophisticated, "Apple-style" marketing hook (max 18 words) that describes the essence of this document. It should sound premium and inviting. Text: "${text}"`,
-      });
-
-      const summary = response.text?.trim() || "A curated digital experience.";
-      setBooks(prev => prev.map(b => b.id === bookId ? { ...b, summary } : b));
-    } catch (err) {
-      console.warn("Background AI hook failed:", err);
+  // Derived Profile
+  const derivedProfile = useMemo(() => {
+    if (profile) {
+      const displayName = profile.name || profile.full_name || profile.email || "U";
+      return { ...profile, name: displayName, initials: displayName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2) };
     }
+    if (user) {
+      const displayName = (user as any).full_name || user.username || user.email || "U";
+      return {
+        id: user.id, email: user.email!, name: displayName, role: 'user', created_at: new Date().toISOString(),
+        photo_url: (user as any).photo_url, photoUrl: (user as any).photo_url,
+        initials: displayName.split(' ').map((n: string) => n[0]).join('').toUpperCase().slice(0, 2)
+      } as UserProfile;
+    }
+    return null;
+  }, [user, profile]);
+
+  const handleAuthSuccess = (newProfile: UserProfile) => {
+    navigate('/home');
   };
 
-  const extractCover = async (doc: any): Promise<string> => {
-    try {
-      const page = await doc.getPage(1);
-      const viewport = page.getViewport({ scale: 0.3 }); // Reduced for speed
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return "";
-      canvas.width = viewport.width;
-      canvas.height = viewport.height;
-      await page.render({ canvasContext: ctx, viewport: viewport }).promise;
-      return canvas.toDataURL('image/jpeg', 0.4); // Lower quality for faster upload
-    } catch { return ""; }
+  const openReader = (book: LibraryBook, mode: 'manual' | 'preview' = 'manual') => {
+    setSelectedBook(book);
+    setReaderMode(mode);
+    setCurrentPage(0);
+    navigate(`/reader/${book.id}`);
   };
 
-  const handleFilesSelect = async (files: File[]) => {
-    const pdfFiles = files.filter(f => f.type === 'application/pdf' || f.name.toLowerCase().endsWith('.pdf'));
-    if (pdfFiles.length === 0) {
-      alert("Please upload PDF files only");
-      return;
-    }
-
-    // Placeholder for future database integration
-    alert("Database not configured. Please set up your database to upload files.");
-    setLoadingStatus(null);
-  };
-
-  const handleCategorySelection = (category: Category) => {
-    const book = categorizingBooks[currentCategorizingIndex];
-    if (!book) return;
-
-    const updatedBook = { ...book, category };
-    setBooks(prev => [...prev, updatedBook]);
-
-    if (currentCategorizingIndex < categorizingBooks.length - 1) {
-      setCurrentCategorizingIndex(prev => prev + 1);
-    } else {
-      setCategorizingBooks([]);
-      setCurrentCategorizingIndex(-1);
-      handleSetView('library');
-    }
-  };
-
-  const handleSummarize = async (id: string) => {
-    if (!process.env.API_KEY) return "AI unavailable (Key missing)";
-    const book = books.find(b => b.id === id);
-    if (!book) return null;
-    setIsSummarizing(true);
-    try {
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-      const page = await book.doc.getPage(1);
-      const textContent = await page.getTextContent();
-      const text = textContent.items.map((i: any) => i.str).join(' ').slice(0, 1000);
-      const response = await ai.models.generateContent({
-        model: 'gemini-3-flash-preview',
-        contents: `Summarize this document into a compelling 15-word masterpiece hook: "${text}"`,
-      });
-      return response.text || "Summary ready.";
-    } catch { return "Summary ready."; }
-    finally { setIsSummarizing(false); }
-  };
-
-  const filteredBooks = useMemo(() => {
-    const safe = books.filter(b => b && b.doc);
-    if (libraryFilter === 'favorites') return safe.filter(b => b.isFavorite);
-    if (['Professional', 'Academic', 'Personal', 'Creative'].includes(libraryFilter)) {
-      return safe.filter(b => b.category === libraryFilter);
-    }
-    return safe;
-  }, [books, libraryFilter]);
-
-  useEffect(() => {
-    const loadSelectedBookDoc = async () => {
-      if (view === 'reader' && selectedBook && !selectedBook.doc) {
-        // Placeholder for future database integration
-        console.log('Database not configured. Cannot load book from storage.');
-        setLoadingStatus(null);
-      }
-    };
-    loadSelectedBookDoc();
-  }, [view, selectedBook?.id]);
-
-  if (isShowingAuth) return <Auth onAuthSuccess={(profile) => {
-    // Get the user from localStorage (Auth component stored it there)
-    const storedUser = localStorage.getItem('user');
-    if (storedUser) {
-      const userData = JSON.parse(storedUser);
-      signIn(userData, profile);
-    }
-    setIsShowingAuth(false);
-  }} onBack={() => setIsShowingAuth(false)} />;
-
-  const isWebsiteView = ['landing', 'examples', 'features'].includes(view);
-  const showSidebar = !isWebsiteView && user && view !== 'reader' && view !== 'admin';
-
-  // Simplified profile object for Sidebar
-  const derivedProfile: UserProfile | null = profile
-    ? {
-      id: profile.id,
-      email: profile.email,
-      name: profile.name || profile.full_name || profile.email,
-      role: profile.role || 'user',
-      created_at: profile.created_at,
-      photoUrl: profile.photo_url || profile.avatar_url || '',
-      photo_url: profile.photo_url || profile.avatar_url || '',
-      initials: (profile.name || profile.email || "U").substring(0, 2).toUpperCase(),
-      student_id: profile.student_id || undefined,
-      grade_section: profile.grade_section || undefined,
-      course: profile.course || undefined,
-      status: profile.status || 'active'
-    }
-    : (user ? {
-      id: user.id,
-      email: user.email!,
-      name: user.email!,
-      role: 'user',
-      created_at: new Date().toISOString(),
-      initials: (user.email || "U").substring(0, 2).toUpperCase(),
-    } : null);
+  if (loading) return <div className="flex h-screen items-center justify-center bg-black text-white"><Loader2 className="animate-spin" /></div>;
 
   return (
-    <div className={`flex flex-col min-h-screen w-full transition-colors duration-700 selection:bg-blue-500 selection:text-white relative ${theme === 'dark' ? 'bg-[#0a0a0a] text-white' : 'bg-[#f5f5f7] text-gray-900'}`}>
-      {theme === 'dark' && view !== 'landing' && <VantaFog />}
-      {theme === 'dark' && view !== 'landing' && <VantaFog />}
-
-      {/* Main Layout Container - Row direction for sidebar views */}
-      <div className={`relative z-10 flex min-h-screen w-full ${showSidebar ? 'flex-row' : 'flex-col'}`}>
-        <Toaster />
-
-        {/* Sidebar - Rendered FIRST to be on the left */}
-        {showSidebar && (
-          <div className="sticky top-0 h-screen flex-shrink-0">
-            <Sidebar
+    <ErrorBoundary>
+      <Toaster />
+      <AppLayout
+        theme={theme}
+        userProfile={derivedProfile}
+        onLogout={signOut}
+        onToggleTheme={toggleTheme}
+        onOpenSettings={() => setIsAccountSettingsOpen(true)}
+        isAuthenticated={!!user}
+        onAuth={() => navigate('/login')}
+      >
+        <Routes>
+          <Route path="/" element={
+            user ? <Navigate to="/library/home" /> : <Navigate to="/home" />
+          } />
+          <Route path="/home" element={
+            <Home
               theme={theme}
-              userProfile={derivedProfile!}
-              activeView={view}
-              activeFilter={libraryFilter}
-              onFilterChange={setLibraryFilter}
-              onNavigate={handleSetView}
-              onLogout={signOut}
-              onToggleTheme={toggleTheme}
-              onOpenSettings={() => setIsAccountSettingsOpen(true)}
-              onOpenAdmin={() => handleSetView('admin')}
+              onStart={() => user ? navigate('/library/home') : navigate('/login')}
+              onViewExamples={() => navigate('/examples')}
             />
-          </div>
-        )}
+          } />
+          <Route path="/examples" element={<ExamplesPage theme={theme} onSelectSample={() => user ? navigate('/library/home') : navigate('/login')} />} />
+          <Route path="/features" element={<FeaturesPage theme={theme} />} />
 
-        {/* Content Area - Flex Column (Header + Main) */}
-        <div className="flex-1 flex flex-col min-w-0 relative">
-          {/* Header - Inside content area if sidebar is shown, otherwise top */}
-          {view !== 'landing' && (
-            <Header
-              view={view}
+          <Route path="/login" element={<Auth onAuthSuccess={handleAuthSuccess} onBack={() => navigate('/')} initialMode="signin" />} />
+          <Route path="/signup" element={<Auth onAuthSuccess={handleAuthSuccess} onBack={() => navigate('/')} initialMode="signup" />} />
+
+          <Route path="/library/home" element={
+            user ? <DashboardHome theme={theme} books={books} onUpload={() => navigate('/upload')} onGoToLibrary={() => navigate('/library')} />
+              : <Navigate to="/login" />
+          } />
+
+          <Route path="/library" element={
+            user ? <LibraryPage
               theme={theme}
-              onNavigate={handleSetView}
-              onOpenSettings={() => setIsAccountSettingsOpen(true)}
-              onAuth={() => setIsShowingAuth(true)}
-              isAuthenticated={!!user}
-              userProfile={derivedProfile}
-              fileName={selectedBook?.name}
-              hasSidebar={showSidebar}
-            />
-          )}
+              books={books}
+              onSelectBook={(book) => setPendingBook(book)}
+              onAddNew={() => navigate('/upload')}
+              onRemoveBook={(id) => setBooks(b => b.filter(x => x.id !== id))}
+              onToggleFavorite={(id) => setBooks(b => b.map(x => x.id === id ? { ...x, isFavorite: !x.isFavorite } : x))}
+            /> : <Navigate to="/login" />
+          } />
 
-          <main className={`flex-1 relative transition-colors duration-700 ${theme === 'dark' ? 'bg-transparent' : 'bg-transparent'} ${!isWebsiteView ? 'h-full overflow-hidden' : ''} ${view !== 'landing' ? 'pt-0' : ''}`}>
+          <Route path="/upload" element={
+            user ? <Upload theme={theme} onFilesSelect={(files) => alert("Upload logic here")} onBack={() => navigate('/library')} isLoading={false} statusMessage="" />
+              : <Navigate to="/login" />
+          } />
 
-            {view === 'landing' && (
-              <Landing
-                theme={theme}
-                onToggleTheme={toggleTheme}
-                onNavigate={handleSetView}
-                user={derivedProfile}
-                onAuth={() => setIsShowingAuth(true)}
-              />
-            )}
-
-            {view === 'home' && (
-              <DashboardHome
-                theme={theme}
-                books={books}
-                onUpload={() => handleSetView('upload')}
-                onGoToLibrary={() => { setLibraryFilter('all'); handleSetView('library'); }}
-              />
-            )}
-
-            {view === 'examples' && (
-              <ExamplesPage theme={theme} onSelectSample={user ? () => handleSetView('home') : () => setIsShowingAuth(true)} />
-            )}
-
-            {view === 'features' && (
-              <FeaturesPage theme={theme} />
-            )}
-
-            {view === 'admin' && isAdmin && (
-              <AdminDashboard theme={theme} onExit={() => handleSetView('home')} onLogout={signOut} />
-            )}
-
-            {view === 'upload' && (
-              <Upload theme={theme} onFilesSelect={handleFilesSelect} onBack={() => handleSetView('library')} isLoading={!!loadingStatus} statusMessage={loadingStatus || ""} />
-            )}
-
-            {view === 'library' && (
-              <div className="h-full overflow-y-auto no-scrollbar">
-                {books.length > 0 && libraryFilter === 'all' && <FeaturedCarousel books={books.slice(0, 5)} theme={theme} />}
-                <Library
-                  theme={theme}
-                  activeFilter={libraryFilter}
-                  books={filteredBooks}
-                  onSelectBook={setPendingBook}
-                  onAddNew={() => handleSetView('upload')}
-                  onRemoveBook={(id) => setBooks(b => b.filter(x => x && x.id !== id))}
-                  onToggleFavorite={(id) => setBooks(b => b.map(x => x && x.id === id ? { ...x, isFavorite: !x.isFavorite } : x))}
-                />
-
-              </div>
-            )}
-
-            {view === 'reader' && selectedBook && (
+          <Route path="/reader/:bookId" element={
+            selectedBook ? (
               <div className={`fixed inset-0 z-[60] animate-in fade-in duration-700 ${theme === 'dark' ? 'bg-[#0a0a0a]' : 'bg-white'}`}>
+                {/* Reader UI - could be extracted to ReaderPage */}
                 <div className={`fixed top-0 left-0 w-full h-[3px] z-[100] ${theme === 'dark' ? 'bg-zinc-900' : 'bg-gray-100'}`}>
                   <div className={`h-full transition-all duration-700 ${theme === 'dark' ? 'bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.6)]' : 'bg-black'}`} style={{ width: `${((currentPage + 1) / (selectedBook.totalPages || 1)) * 100}%` }} />
                 </div>
-
-                <button onClick={() => { handleSetView('library'); setSelectedBook(null); }}
+                <button onClick={() => { navigate('/library'); setSelectedBook(null); }}
                   className={`fixed top-8 left-8 z-[110] p-4 backdrop-blur-md border transition-all shadow-2xl rounded-full ${theme === 'dark' ? 'bg-white/10 border-white/10 text-white hover:bg-white hover:text-black' : 'bg-black/5 border-black/5 text-black hover:bg-black hover:text-white'}`}>
                   <BookOpen size={24} />
                 </button>
-
                 <BookViewer
                   pdfDocument={selectedBook.doc}
                   onFlip={setCurrentPage}
@@ -412,7 +237,6 @@ const FlipBookAppContent: React.FC = () => {
                   onZoomChange={setZoomLevel}
                   theme={theme}
                 />
-
                 <Controls
                   theme={theme}
                   currentPage={currentPage}
@@ -423,117 +247,31 @@ const FlipBookAppContent: React.FC = () => {
                   onPrev={() => bookRef.current?.pageFlip()?.flipPrev()}
                 />
               </div>
-            )}
-          </main>
-        </div>
+            ) : <Navigate to="/library" />
+          } />
 
-        <LibraryActionModal
-          theme={theme}
-          book={pendingBook}
-          onClose={() => setPendingBook(null)}
-          onSelectMode={(m) => { setReaderMode(m); setSelectedBook(pendingBook); setPendingBook(null); handleSetView('reader'); setCurrentPage(0); }}
-          onSummarize={handleSummarize}
-          onApplySummary={(id, s) => setBooks(b => b.map(x => x && x.id === id ? { ...x, summary: s } : x))}
-          isSummarizing={isSummarizing}
-          onRemove={(id) => setBooks(b => b.filter(x => x && x.id !== id))}
-          onToggleFavorite={(id) => setBooks(b => b.map(x => x && x.id === id ? { ...x, isFavorite: !x.isFavorite } : x))}
-        />
+          <Route path="/admin/*" element={
+            user ? (isAdmin ? <AdminDashboard theme="dark" onExit={() => navigate('/library/home')} onLogout={signOut} /> : <Navigate to="/library/home" />)
+              : <AdminAuth />
+          } />
 
-        {currentCategorizingIndex !== -1 && categorizingBooks[currentCategorizingIndex] && (
-          <CategorySelectionModal
-            isOpen={true}
-            bookName={categorizingBooks[currentCategorizingIndex].name}
-            coverUrl={categorizingBooks[currentCategorizingIndex].coverUrl}
-            onSelect={handleCategorySelection}
-            theme={theme}
-          />
-        )}
+          <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+      </AppLayout>
 
-        {derivedProfile && <AccountSettingsModal isOpen={isAccountSettingsOpen} onClose={() => setIsAccountSettingsOpen(false)} userProfile={derivedProfile} onSave={() => { setIsAccountSettingsOpen(false); }} theme={theme} onLogout={signOut} />}
-      </div>
-    </div>
-  );
-};
+      <LibraryActionModal
+        theme={theme}
+        book={pendingBook}
+        onClose={() => setPendingBook(null)}
+        onSelectMode={(m) => { if (pendingBook) openReader(pendingBook, m); setPendingBook(null); }}
+        onSummarize={() => Promise.resolve("Summary")}
+        onApplySummary={(id, s) => setBooks(b => b.map(x => x.id === id ? { ...x, summary: s } : x))}
+        isSummarizing={isSummarizing}
+        onRemove={(id) => setBooks(b => b.filter(x => x.id !== id))}
+        onToggleFavorite={(id) => setBooks(b => b.map(x => x.id === id ? { ...x, isFavorite: !x.isFavorite } : x))}
+      />
 
-const App: React.FC = () => {
-  const { user, profile, isAdmin, loading, signOut } = useAuth();
-  const [showFailsafe, setShowFailsafe] = useState(false);
-
-  // Failsafe timer: if loading takes too long, allow manual bypass
-  useEffect(() => {
-    let timer: any;
-    if (loading) {
-      timer = setTimeout(() => setShowFailsafe(true), 3000);
-    } else {
-      setShowFailsafe(false);
-    }
-    return () => clearTimeout(timer);
-  }, [loading]);
-
-  // Allow manual bypass only if stuck
-  const [forceLoad, setForceLoad] = useState(false);
-
-  if (loading && !forceLoad) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-black text-white">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="animate-spin text-blue-500" size={48} />
-          <p className="text-zinc-500 font-medium animate-pulse">Initializing System...</p>
-
-          {showFailsafe && (
-            <button
-              onClick={() => setForceLoad(true)}
-              className="mt-4 text-xs text-red-500 hover:text-red-400 underline decoration-red-500/50 underline-offset-4"
-            >
-              Taking too long? Click to Force Entry
-            </button>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <ErrorBoundary>
-      <Toaster />
-      <Routes>
-        {/* Admin Routes */}
-        <Route
-          path="/admin"
-          element={
-            user ? (
-              isAdmin ? <Navigate to="/admin/dashboard" replace /> :
-                /* User logged in but not admin */
-                <Navigate to="/admin/dashboard" replace />
-            ) : (
-              <AdminAuth />
-            )
-          }
-        />
-
-
-        <Route
-          path="/admin/dashboard"
-          element={
-            user ? (
-              isAdmin ?
-                <AdminDashboard theme="dark" onExit={() => window.location.href = '/'} onLogout={signOut} /> :
-                /* User logged in but profile might not be loaded yet, show loading */
-                <div className="flex h-screen w-full items-center justify-center bg-black text-white">
-                  <div className="text-center">
-                    <Loader2 className="animate-spin text-blue-500 mx-auto mb-4" size={32} />
-                    <p className="text-zinc-400">Verifying admin privileges...</p>
-                  </div>
-                </div>
-            ) : (
-              <Navigate to="/admin" replace />
-            )
-          }
-        />
-
-        {/* Student Portal - All other routes */}
-        <Route path="/*" element={<FlipBookAppContent />} />
-      </Routes>
+      {derivedProfile && <AccountSettingsModal isOpen={isAccountSettingsOpen} onClose={() => setIsAccountSettingsOpen(false)} userProfile={derivedProfile} onSave={() => setIsAccountSettingsOpen(false)} theme={theme} onLogout={signOut} />}
     </ErrorBoundary>
   );
 };

@@ -69,7 +69,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setProfile(null);
         setLoading(false);
         localStorage.removeItem('user');
-        window.location.href = '/';
+        window.location.href = '/home';
     }, []);
 
     const contextValue = useMemo(() => ({

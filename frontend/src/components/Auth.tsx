@@ -4,14 +4,17 @@ import { UserProfile } from '../types';
 import ErrorModal from './ErrorModal';
 import VantaFog from './VantaFog';
 import { showSuccessToast } from '../utils/toast';
+import { useAuth } from '../context/AuthContext';
 
 interface AuthProps {
   onAuthSuccess: (profile: UserProfile) => void;
   onBack?: () => void;
+  initialMode?: 'signin' | 'signup';
 }
 
-const Auth: React.FC<AuthProps> = ({ onAuthSuccess, onBack }) => {
-  const [mode, setMode] = useState<'signin' | 'signup'>('signin');
+const Auth: React.FC<AuthProps> = ({ onAuthSuccess, onBack, initialMode = 'signin' }) => {
+  const { signIn } = useAuth();
+  const [mode, setMode] = useState<'signin' | 'signup'>(initialMode);
   const [authType, setAuthType] = useState<'student' | 'admin'>('student');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -215,6 +218,7 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess, onBack }) => {
           initials: getInitials(newUser.full_name),
         };
 
+        signIn(newUser, profile);
         showSuccessToast('Account created successfully!');
         onAuthSuccess(profile);
       } else {
@@ -259,6 +263,7 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess, onBack }) => {
           initials: getInitials(user.full_name),
         };
 
+        signIn(user, profile);
         showSuccessToast('Welcome back!');
         onAuthSuccess(profile);
       }

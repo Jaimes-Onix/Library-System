@@ -17,33 +17,30 @@ import {
   Upload,
   BookOpen
 } from 'lucide-react';
-import { UserProfile, Theme, AppView } from '../types';
+import { useNavigate, useLocation, useSearchParams } from 'react-router-dom';
+import { UserProfile, Theme } from '../types';
 
 interface SidebarProps {
   theme: Theme;
   userProfile: UserProfile;
   onLogout: () => Promise<void>;
-  activeView: string;
-  activeFilter: string;
-  onFilterChange: (filter: string) => void;
-  onNavigate: (view: AppView) => void;
   onToggleTheme: () => void;
   onOpenSettings: () => void;
-  onOpenAdmin: () => void;
 }
 
 const Sidebar: React.FC<SidebarProps> = ({
   theme,
   userProfile,
   onLogout,
-  activeView,
-  activeFilter,
-  onFilterChange,
-  onNavigate,
   onToggleTheme,
   onOpenSettings,
-  onOpenAdmin
 }) => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
+  const currentCategory = searchParams.get('category');
+  const currentFilter = searchParams.get('filter');
+
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   if (!userProfile) return null;
@@ -60,10 +57,10 @@ const Sidebar: React.FC<SidebarProps> = ({
   const dividerColor = isDark ? 'border-white/5' : 'border-gray-100';
 
   const navItems = [
-    { id: 'home', label: 'Home', icon: Home, action: () => onNavigate('home') },
-    { id: 'all', label: 'All Books', icon: Library, action: () => { onNavigate('library'); onFilterChange('all'); } },
-    { id: 'upload', label: 'Import PDF', icon: Upload, action: () => onNavigate('upload') },
-    { id: 'favorites', label: 'Favorites', icon: Heart, action: () => { onNavigate('library'); onFilterChange('favorites'); } },
+    { id: 'home', label: 'Home', icon: Home, path: '/library/home' },
+    { id: 'all', label: 'All Books', icon: Library, path: '/library' }, // Default library view
+    { id: 'upload', label: 'Import PDF', icon: Upload, path: '/upload' },
+    { id: 'favorites', label: 'Favorites', icon: Heart, path: '/library?filter=favorites' },
   ];
 
   const categories = [
@@ -73,25 +70,32 @@ const Sidebar: React.FC<SidebarProps> = ({
     { id: 'Creative', label: 'Creative', icon: Palette, color: 'bg-pink-500', activeRing: 'ring-pink-400/40' },
   ];
 
-  const getIsNavActive = (id: string) => {
-    if (id === 'home') return activeView === 'home';
-    if (id === 'upload') return activeView === 'upload';
-    if (id === 'all') return activeView === 'library' && activeFilter === 'all';
-    if (id === 'favorites') return activeView === 'library' && activeFilter === 'favorites';
-    return false;
+  // Helper to check active state
+  const isNavActive = (path: string) => {
+    if (path.includes('?')) {
+      // Check query params for favorites
+      return location.pathname === path.split('?')[0] && location.search === `?${path.split('?')[1]}`;
+    }
+    // Strict check for home/upload, loose for library (but not if category is selected)
+    if (path === '/library') {
+      return location.pathname === '/library' && !currentCategory && !currentFilter;
+    }
+    return location.pathname === path;
   };
 
-  const getIsCategoryActive = (id: string) => {
-    return activeView === 'library' && activeFilter === id;
-  };
+  const isCategoryActive = (catId: string) => {
+    return location.pathname === '/library' && currentCategory === catId;
+  }
 
   return (
-    <aside className={`w-[280px] min-w-[280px] h-full flex flex-col z-40 hidden md:flex transition-all duration-300 border-r overflow-y-auto overflow-x-hidden ${sidebarBg} ${sidebarBorder} ${sidebarText}`}>
-
+    <div className={`w-[280px] h-full flex flex-col border-r transition-colors duration-300 ${sidebarBg} ${sidebarBorder}`}>
       {/* ─── App Logo ─── */}
       <div className="p-8 flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="p-2.5 bg-orange-500 rounded-xl text-white shadow-lg shadow-orange-500/20">
+        <div
+          onClick={() => navigate('/home')}
+          className="flex items-center gap-3 cursor-pointer group"
+        >
+          <div className="p-2.5 bg-orange-500 rounded-xl text-white shadow-lg shadow-orange-500/20 group-hover:scale-110 group-active:scale-95 transition-transform">
             <BookOpen size={24} strokeWidth={2.5} />
           </div>
           <div>
@@ -105,21 +109,19 @@ const Sidebar: React.FC<SidebarProps> = ({
         </div>
       </div>
 
-      {/* ─── Navigate Section ─── */}
-      <div className="px-4 space-y-8 overflow-y-auto no-scrollbar flex-1">
-
-        {/* Main Nav */}
+      {/* ─── Navigation ─── */}
+      <div className="flex-1 px-4 space-y-8 overflow-y-auto no-scrollbar">
         <div>
           <p className={`px-4 text-[11px] font-black uppercase tracking-widest mb-4 ${sidebarSecondaryText}`}>
             Navigate
           </p>
           <div className="space-y-1">
             {navItems.map((item) => {
-              const isActive = getIsNavActive(item.id);
+              const isActive = isNavActive(item.path);
               return (
                 <button
                   key={item.id}
-                  onClick={item.action}
+                  onClick={() => navigate(item.path)}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all group
                     ${isActive
                       ? sidebarItemActive
@@ -142,11 +144,11 @@ const Sidebar: React.FC<SidebarProps> = ({
           </p>
           <div className="space-y-1">
             {categories.map((cat) => {
-              const isActive = getIsCategoryActive(cat.id);
+              const isActive = isCategoryActive(cat.id);
               return (
                 <button
                   key={cat.id}
-                  onClick={() => { onNavigate('library'); onFilterChange(cat.id); }}
+                  onClick={() => navigate(`/library?category=${cat.id}`)}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all group
                   ${isActive
                       ? sidebarItemActive
@@ -161,35 +163,22 @@ const Sidebar: React.FC<SidebarProps> = ({
             })}
           </div>
         </div>
+      </div>
 
-        {/* ─── Divider ─── */}
-        <div className={`mx-7 border-t flex-shrink-0 ${dividerColor}`} />
-
-        {/* ─── Bottom Actions ─── */}
-        <div className="px-5 py-5 space-y-1 flex-shrink-0 mt-auto">
-          {/* Theme Toggle */}
-          <button
-            onClick={onToggleTheme}
-            className={`w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-[14px] font-semibold transition-all duration-200 active:scale-[0.98] group ${sidebarText} ${sidebarItemHover}`}
-          >
-            <div className="relative w-5 h-5 flex-shrink-0">
-              <Sun size={20} strokeWidth={1.8} className={`absolute inset-0 transition-all duration-500 ${isDark ? 'opacity-0 rotate-90 scale-0' : 'opacity-100 rotate-0 scale-100'}`} />
-              <Moon size={20} strokeWidth={1.8} className={`absolute inset-0 transition-all duration-500 ${isDark ? 'opacity-100 rotate-0 scale-100' : 'opacity-0 -rotate-90 scale-0'}`} />
-            </div>
-            <span>{isDark ? 'Dark Mode' : 'Light Mode'}</span>
-          </button>
-
+      {/* ─── Footer ─── */}
+      <div className={`mt-auto p-4 border-t ${dividerColor}`}>
+        <div className="space-y-1">
           {/* Admin Dashboard */}
           {userProfile.role === 'admin' && (
             <button
-              onClick={onOpenAdmin}
-              className={`w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-[14px] font-bold transition-all duration-200 active:scale-[0.98] group border
-              ${isDark
-                  ? 'bg-orange-500/10 text-orange-600 hover:bg-orange-500/15 border-orange-500/15'
-                  : 'bg-orange-500/10 text-orange-400 hover:bg-orange-500/15 border-orange-500/10'
+              onClick={() => navigate('/admin')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all border
+                ${isDark
+                  ? 'bg-orange-500/10 text-orange-600 hover:bg-orange-500/15 border-orange-500/20'
+                  : 'bg-orange-500/10 text-orange-600 hover:bg-orange-500/15 border-orange-500/10'
                 }`}
             >
-              <ShieldCheck size={20} strokeWidth={2} className="group-hover:rotate-12 transition-transform duration-300 flex-shrink-0" />
+              <ShieldCheck size={18} />
               <span>Admin Panel</span>
             </button>
           )}
@@ -197,10 +186,24 @@ const Sidebar: React.FC<SidebarProps> = ({
           {/* Account Settings */}
           <button
             onClick={onOpenSettings}
-            className={`w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-[14px] font-semibold transition-all duration-200 active:scale-[0.98] group ${sidebarText} ${sidebarItemHover}`}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${sidebarText} ${sidebarItemHover}`}
           >
-            <Settings size={20} strokeWidth={1.8} className="group-hover:rotate-90 transition-transform duration-500 flex-shrink-0" />
-            <span>Account Settings</span>
+            <Settings size={18} />
+            <span>Settings</span>
+          </button>
+
+          {/* Theme Toggle */}
+          <button
+            onClick={onToggleTheme}
+            className={`w-full flex items-center justify-between px-4 py-3 rounded-xl text-sm font-semibold transition-all ${sidebarText} ${sidebarItemHover}`}
+          >
+            <span className="flex items-center gap-3">
+              {isDark ? <Moon size={18} /> : <Sun size={18} />}
+              {isDark ? 'Dark Mode' : 'Light Mode'}
+            </span>
+            <div className={`w-10 h-5 rounded-full relative transition-colors ${isDark ? 'bg-orange-500' : 'bg-gray-300'}`}>
+              <div className={`absolute top-1 w-3 h-3 rounded-full bg-white transition-all ${isDark ? 'left-6' : 'left-1'}`} />
+            </div>
           </button>
 
           {/* Sign Out */}
@@ -216,19 +219,18 @@ const Sidebar: React.FC<SidebarProps> = ({
               }
             }}
             disabled={isLoggingOut}
-            className={`w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-[14px] font-bold transition-all duration-200 active:scale-[0.98] group text-red-500 disabled:opacity-50
-            ${isDark ? 'hover:bg-red-50' : 'hover:bg-red-500/10'}`}
+            className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all text-red-500 disabled:opacity-50 hover:bg-red-500/10`}
           >
             {isLoggingOut ? (
-              <Loader2 size={20} className="animate-spin flex-shrink-0" />
+              <Loader2 size={18} className="animate-spin" />
             ) : (
-              <LogOut size={20} strokeWidth={2} className="group-hover:-translate-x-0.5 transition-transform duration-200 flex-shrink-0" />
+              <LogOut size={18} strokeWidth={2} />
             )}
             <span>{isLoggingOut ? 'Signing Out...' : 'Sign Out'}</span>
           </button>
         </div>
       </div>
-    </aside>
+    </div>
   );
 };
 
