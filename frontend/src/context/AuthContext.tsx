@@ -1,8 +1,10 @@
-import React, { createContext, useContext, useState, useMemo, useCallback } from 'react';
+import React, { createContext, useContext, useState, useMemo, useCallback, useEffect } from 'react';
 
 interface User {
     id: string;
     email: string;
+    username?: string;
+    full_name?: string;
 }
 
 interface Session {
@@ -17,6 +19,8 @@ interface AuthContextType {
     loading: boolean;
     signOut: () => Promise<void>;
     refreshProfile: () => Promise<any>;
+    setUser: (user: User | null) => void;
+    signIn: (userData: any, profile: any) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -27,6 +31,8 @@ const AuthContext = createContext<AuthContextType>({
     loading: false,
     signOut: async () => { },
     refreshProfile: async () => { },
+    setUser: () => { },
+    signIn: () => { },
 });
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -35,11 +41,34 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [profile, setProfile] = useState<any | null>(null);
     const [loading, setLoading] = useState(false);
 
+    // Initialize user from localStorage on mount
+    useEffect(() => {
+        const storedUser = localStorage.getItem('user');
+        if (storedUser) {
+            try {
+                const userData = JSON.parse(storedUser);
+                setUser(userData);
+                setSession({ user: userData });
+            } catch (error) {
+                console.error('Failed to parse stored user:', error);
+                localStorage.removeItem('user');
+            }
+        }
+    }, []);
+
+    const signIn = useCallback((userData: any, userProfile: any) => {
+        setUser(userData);
+        setSession({ user: userData });
+        setProfile(userProfile);
+        localStorage.setItem('user', JSON.stringify(userData));
+    }, []);
+
     const signOut = useCallback(async () => {
         setUser(null);
         setSession(null);
         setProfile(null);
         setLoading(false);
+        localStorage.removeItem('user');
         window.location.href = '/';
     }, []);
 
@@ -52,8 +81,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         signOut,
         refreshProfile: async () => {
             return null;
-        }
-    }), [user, session, profile, loading, signOut]);
+        },
+        setUser,
+        signIn,
+    }), [user, session, profile, loading, signOut, signIn]);
 
     return (
         <AuthContext.Provider value={contextValue}>

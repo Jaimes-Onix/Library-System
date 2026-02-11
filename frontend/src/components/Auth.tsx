@@ -17,9 +17,10 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess, onBack }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [errorModal, setErrorModal] = useState({ isOpen: false, message: '' });
   const [formData, setFormData] = useState({
-    user: '',
+    username: '',
     email: '',
     password: '',
+    confirmPassword: '',
     name: '',
     studentId: '',
     gradeSection: '',
@@ -32,10 +33,8 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess, onBack }) => {
   };
 
   const validateForm = (): boolean => {
-    const email = formData.email || formData.user;
-
-    if (!email.trim()) {
-      setErrorModal({ isOpen: true, message: 'Please enter your email address' });
+    if (!formData.username.trim()) {
+      setErrorModal({ isOpen: true, message: 'Please enter your username' });
       return false;
     }
 
@@ -61,17 +60,16 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess, onBack }) => {
         setErrorModal({ isOpen: true, message: 'Please enter your Course' });
         return false;
       }
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (email.toLowerCase() !== 'admin' && !emailRegex.test(email)) {
-      setErrorModal({ isOpen: true, message: 'Please enter a valid email address' });
-      return false;
-    }
-
-    if (mode === 'signup') {
+      if (!formData.email.trim()) {
+        setErrorModal({ isOpen: true, message: 'Please enter your email' });
+        return false;
+      }
       if (formData.password.length < 6) {
         setErrorModal({ isOpen: true, message: 'Password must be at least 6 characters' });
+        return false;
+      }
+      if (formData.password !== formData.confirmPassword) {
+        setErrorModal({ isOpen: true, message: 'Passwords do not match' });
         return false;
       }
     }
@@ -88,14 +86,187 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess, onBack }) => {
 
     setIsLoading(true);
 
-    // Placeholder for future database integration
-    setTimeout(() => {
-      setErrorModal({
-        isOpen: true,
-        message: 'Database not configured. Please set up your database first.'
-      });
+    try {
+      const { supabase } = await import('../lib/supabase');
+
+      if (mode === 'signup') {
+        // Check if username already exists
+        const { data: existingUser, error: usernameCheckError } = await supabase
+          .from('users')
+          .select('id')
+          .eq('username', formData.username)
+          .maybeSingle();
+
+        if (usernameCheckError) {
+          console.error('Username check error:', usernameCheckError);
+          setErrorModal({ isOpen: true, message: 'Error checking username availability' });
+          setIsLoading(false);
+          return;
+        }
+
+        if (existingUser) {
+          setErrorModal({ isOpen: true, message: 'Username already taken' });
+          setIsLoading(false);
+          return;
+        }
+
+        // Check if student_id already exists
+        const { data: existingStudentId, error: studentIdCheckError } = await supabase
+          .from('users')
+          .select('id')
+          .eq('student_id', formData.studentId)
+          .maybeSingle();
+
+        if (studentIdCheckError) {
+          console.error('Student ID check error:', studentIdCheckError);
+          setErrorModal({ isOpen: true, message: 'Error checking Student ID availability' });
+          setIsLoading(false);
+          return;
+        }
+
+        if (existingStudentId) {
+          setErrorModal({ isOpen: true, message: 'Student ID already registered' });
+          setIsLoading(false);
+          return;
+        }
+
+        // Upload photo if provided
+        let photoUrl = '';
+        if (formData.photo) {
+          try {
+            const fileExt = formData.photo.name.split('.').pop();
+            const fileName = `${formData.username}-${Date.now()}.${fileExt}`;
+            const filePath = `avatars/${fileName}`;
+
+            const { data: uploadData, error: uploadError } = await supabase.storage
+              .from('user-photos')
+              .upload(filePath, formData.photo, {
+                cacheControl: '3600',
+                upsert: false
+              });
+
+            if (uploadError) {
+              console.error('Photo upload error:', uploadError);
+              // Continue without photo if upload fails
+            } else {
+              // Get public URL
+              const { data: urlData } = supabase.storage
+                .from('user-photos')
+                .getPublicUrl(filePath);
+
+              photoUrl = urlData.publicUrl;
+              console.log('Photo uploaded successfully:', photoUrl);
+            }
+          } catch (photoError) {
+            console.error('Error processing photo:', photoError);
+            // Continue without photo if processing fails
+          }
+        }
+
+        // Insert new user into the users table
+        const { data: newUser, error } = await supabase
+          .from('users')
+          .insert([
+            {
+              username: formData.username,
+              full_name: formData.name,
+              student_id: formData.studentId,
+              grade: formData.gradeSection,
+              course: formData.course,
+              email: formData.email,
+              password: formData.password, // Note: Storing plain text as requested
+              photo_url: photoUrl || null,
+            },
+          ])
+          .select()
+          .single();
+
+        if (error) {
+          console.error('Signup error:', error);
+          setErrorModal({ isOpen: true, message: error.message || 'Failed to create account' });
+          setIsLoading(false);
+          return;
+        }
+
+        if (!newUser) {
+          console.error('No user data returned after signup');
+          setErrorModal({ isOpen: true, message: 'Failed to create account - no data returned' });
+          setIsLoading(false);
+          return;
+        }
+
+        console.log('Signup successful:', newUser);
+
+        // Store user in localStorage
+        localStorage.setItem('user', JSON.stringify(newUser));
+
+        // Create UserProfile object
+        const profile: UserProfile = {
+          id: newUser.id,
+          name: newUser.full_name,
+          email: newUser.email,
+          role: authType,
+          created_at: newUser.created_at,
+          student_id: newUser.student_id,
+          grade_section: newUser.grade,
+          course: newUser.course,
+          photoUrl: newUser.photo_url || (formData.photo ? URL.createObjectURL(formData.photo) : undefined),
+          photo_url: newUser.photo_url,
+          initials: getInitials(newUser.full_name),
+        };
+
+        showSuccessToast('Account created successfully!');
+        onAuthSuccess(profile);
+      } else {
+        // Login: Check username and password
+        const { data: user, error } = await supabase
+          .from('users')
+          .select('*')
+          .eq('username', formData.username)
+          .eq('password', formData.password)
+          .maybeSingle();
+
+        if (error) {
+          console.error('Login error:', error);
+          setErrorModal({ isOpen: true, message: 'Login failed. Please try again.' });
+          setIsLoading(false);
+          return;
+        }
+
+        if (!user) {
+          setErrorModal({ isOpen: true, message: 'Invalid username or password' });
+          setIsLoading(false);
+          return;
+        }
+
+        console.log('Login successful:', user);
+
+        // Store user in localStorage
+        localStorage.setItem('user', JSON.stringify(user));
+
+        // Create UserProfile object
+        const profile: UserProfile = {
+          id: user.id,
+          name: user.full_name,
+          email: user.email,
+          role: authType,
+          created_at: user.created_at,
+          student_id: user.student_id,
+          grade_section: user.grade,
+          course: user.course,
+          photoUrl: user.photo_url,
+          photo_url: user.photo_url,
+          initials: getInitials(user.full_name),
+        };
+
+        showSuccessToast('Welcome back!');
+        onAuthSuccess(profile);
+      }
+    } catch (error: any) {
+      console.error('Authentication error:', error);
+      setErrorModal({ isOpen: true, message: error.message || 'An error occurred. Please check the console for details.' });
       setIsLoading(false);
-    }, 1000);
+    }
   };
 
   return (
@@ -191,6 +362,17 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess, onBack }) => {
                     <input
                       type="text"
                       required
+                      placeholder="Username"
+                      className="w-full pl-12 pr-4 py-4 bg-zinc-900/50 border border-white/5 rounded-2xl focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500/50 outline-none transition-all text-sm font-medium text-white placeholder-zinc-600"
+                      value={formData.username}
+                      onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                    />
+                  </div>
+                  <div className="relative group">
+                    <User className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-orange-500 transition-colors" size={18} />
+                    <input
+                      type="text"
+                      required
                       placeholder="Full Name"
                       className="w-full pl-12 pr-4 py-4 bg-zinc-900/50 border border-white/5 rounded-2xl focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500/50 outline-none transition-all text-sm font-medium text-white placeholder-zinc-600"
                       value={formData.name}
@@ -233,7 +415,7 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess, onBack }) => {
                   <div className="relative group">
                     <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-orange-500 transition-colors" size={18} />
                     <input
-                      type="email"
+                      type="text"
                       required
                       placeholder="Email address"
                       className="w-full pl-12 pr-4 py-4 bg-zinc-900/50 border border-white/5 rounded-2xl focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500/50 outline-none transition-all text-sm font-medium text-white placeholder-zinc-600"
@@ -250,10 +432,10 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess, onBack }) => {
                   <input
                     type="text"
                     required
-                    placeholder="Username or Email"
+                    placeholder="Username"
                     className="w-full pl-12 pr-4 py-4 bg-zinc-900/50 border border-white/5 rounded-2xl focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500/50 outline-none transition-all text-sm font-medium text-white placeholder-zinc-600"
-                    value={formData.user}
-                    onChange={(e) => setFormData({ ...formData, user: e.target.value })}
+                    value={formData.username}
+                    onChange={(e) => setFormData({ ...formData, username: e.target.value })}
                   />
                 </div>
               )}
@@ -277,6 +459,20 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess, onBack }) => {
                 </button>
               </div>
 
+              {mode === 'signup' && (
+                <div className="relative group">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 group-focus-within:text-orange-500 transition-colors" size={18} />
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    required
+                    placeholder="Confirm Password"
+                    className="w-full pl-12 pr-4 py-4 bg-zinc-900/50 border border-white/5 rounded-2xl focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500/50 outline-none transition-all text-sm font-medium text-white placeholder-zinc-600"
+                    value={formData.confirmPassword}
+                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                  />
+                </div>
+              )}
+
               <button
                 type="submit"
                 disabled={isLoading}
@@ -297,7 +493,7 @@ const Auth: React.FC<AuthProps> = ({ onAuthSuccess, onBack }) => {
               <button
                 onClick={() => {
                   setMode(mode === 'signin' ? 'signup' : 'signin');
-                  setFormData({ user: '', email: '', password: '', name: '', studentId: '', gradeSection: '', course: '', photo: null });
+                  setFormData({ username: '', email: '', password: '', confirmPassword: '', name: '', studentId: '', gradeSection: '', course: '', photo: null });
                 }}
                 className="text-sm text-zinc-500 hover:text-white transition-colors"
               >

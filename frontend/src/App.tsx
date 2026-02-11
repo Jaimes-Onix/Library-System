@@ -26,6 +26,8 @@ import { useAuth } from './context/AuthContext';
 import AdminDashboard from './components/AdminDashboard';
 import AdminAuth from './components/AdminAuth';
 import VantaFog from './components/VantaFog';
+import Landing from './components/Landing';
+
 
 const generateSafeId = () => Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
 
@@ -89,7 +91,7 @@ class ErrorBoundary extends React.Component<EBProps, EBState> {
 }
 
 const FlipBookAppContent: React.FC = () => {
-  const { user, profile, isAdmin, signOut } = useAuth();
+  const { user, profile, isAdmin, signOut, signIn } = useAuth();
   const [isShowingAuth, setIsShowingAuth] = useState(false);
 
   const [theme, setTheme] = useState<Theme>('dark');
@@ -129,13 +131,10 @@ const FlipBookAppContent: React.FC = () => {
   const [libraryFilter, setLibraryFilter] = useState('all');
   const [isAccountSettingsOpen, setIsAccountSettingsOpen] = useState(false);
 
-  // Close auth modal and navigate to home when user logs in
+  // Close auth modal when user logs in (but stay on current page)
   useEffect(() => {
     if (user) {
       setIsShowingAuth(false);
-      if (view === 'landing') {
-        setView('home');
-      }
     }
   }, [user]);
 
@@ -258,7 +257,15 @@ const FlipBookAppContent: React.FC = () => {
     loadSelectedBookDoc();
   }, [view, selectedBook?.id]);
 
-  if (isShowingAuth) return <Auth onAuthSuccess={() => setIsShowingAuth(false)} onBack={() => setIsShowingAuth(false)} />;
+  if (isShowingAuth) return <Auth onAuthSuccess={(profile) => {
+    // Get the user from localStorage (Auth component stored it there)
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      const userData = JSON.parse(storedUser);
+      signIn(userData, profile);
+    }
+    setIsShowingAuth(false);
+  }} onBack={() => setIsShowingAuth(false)} />;
 
   const isWebsiteView = ['landing', 'examples', 'features'].includes(view);
   const showSidebar = !isWebsiteView && user && view !== 'reader' && view !== 'admin';
@@ -290,22 +297,16 @@ const FlipBookAppContent: React.FC = () => {
 
   return (
     <div className={`flex flex-col min-h-screen w-full transition-colors duration-700 selection:bg-blue-500 selection:text-white relative ${theme === 'dark' ? 'bg-[#0a0a0a] text-white' : 'bg-[#f5f5f7] text-gray-900'}`}>
-      {theme === 'dark' && <VantaFog />}
-      <div className="relative z-10 flex flex-col min-h-screen w-full">
-        <Toaster />
-        <Header
-          view={view}
-          theme={theme}
-          onNavigate={handleSetView}
-          onOpenSettings={() => setIsAccountSettingsOpen(true)}
-          onAuth={() => setIsShowingAuth(true)}
-          isAuthenticated={!!user}
-          userProfile={derivedProfile}
-          fileName={selectedBook?.name}
-        />
+      {theme === 'dark' && view !== 'landing' && <VantaFog />}
+      {theme === 'dark' && view !== 'landing' && <VantaFog />}
 
-        <div className={`flex-1 flex pt-14 ${isWebsiteView ? 'flex-col' : 'overflow-hidden h-[calc(100vh-56px)]'}`}>
-          {showSidebar && (
+      {/* Main Layout Container - Row direction for sidebar views */}
+      <div className={`relative z-10 flex min-h-screen w-full ${showSidebar ? 'flex-row' : 'flex-col'}`}>
+        <Toaster />
+
+        {/* Sidebar - Rendered FIRST to be on the left */}
+        {showSidebar && (
+          <div className="sticky top-0 h-screen flex-shrink-0">
             <Sidebar
               theme={theme}
               userProfile={derivedProfile!}
@@ -318,14 +319,35 @@ const FlipBookAppContent: React.FC = () => {
               onOpenSettings={() => setIsAccountSettingsOpen(true)}
               onOpenAdmin={() => handleSetView('admin')}
             />
+          </div>
+        )}
+
+        {/* Content Area - Flex Column (Header + Main) */}
+        <div className="flex-1 flex flex-col min-w-0 relative">
+          {/* Header - Inside content area if sidebar is shown, otherwise top */}
+          {view !== 'landing' && (
+            <Header
+              view={view}
+              theme={theme}
+              onNavigate={handleSetView}
+              onOpenSettings={() => setIsAccountSettingsOpen(true)}
+              onAuth={() => setIsShowingAuth(true)}
+              isAuthenticated={!!user}
+              userProfile={derivedProfile}
+              fileName={selectedBook?.name}
+              hasSidebar={showSidebar}
+            />
           )}
 
-          <main className={`flex-1 relative transition-colors duration-700 ${theme === 'dark' ? 'bg-transparent' : 'bg-transparent'} ${!isWebsiteView ? 'h-full overflow-hidden' : ''}`}>
+          <main className={`flex-1 relative transition-colors duration-700 ${theme === 'dark' ? 'bg-transparent' : 'bg-transparent'} ${!isWebsiteView ? 'h-full overflow-hidden' : ''} ${view !== 'landing' ? 'pt-0' : ''}`}>
+
             {view === 'landing' && (
-              <Home
+              <Landing
                 theme={theme}
-                onStart={user ? () => handleSetView('home') : () => setIsShowingAuth(true)}
-                onViewExamples={() => handleSetView('examples')}
+                onToggleTheme={toggleTheme}
+                onNavigate={handleSetView}
+                user={derivedProfile}
+                onAuth={() => setIsShowingAuth(true)}
               />
             )}
 

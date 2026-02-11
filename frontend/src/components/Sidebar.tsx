@@ -50,13 +50,14 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   const isDark = theme === 'dark';
 
-  // Inverted color scheme for contrast
-  const sidebarBg = isDark ? 'bg-[#F5F5F7]' : 'bg-[#1D1D1F]';
-  const sidebarText = isDark ? 'text-gray-900' : 'text-white';
-  const sidebarItemHover = isDark ? 'hover:bg-black/[0.05]' : 'hover:bg-white/[0.06]';
-  const sidebarItemActive = isDark ? 'bg-black text-white' : 'bg-white text-black';
-  const sidebarSecondaryText = isDark ? 'text-gray-400' : 'text-zinc-500';
-  const dividerColor = isDark ? 'border-gray-200/60' : 'border-white/[0.06]';
+  // Aligned with Landing Page Theme
+  const sidebarBg = isDark ? 'bg-zinc-900' : 'bg-white';
+  const sidebarBorder = isDark ? 'border-zinc-800' : 'border-gray-200';
+  const sidebarText = isDark ? 'text-gray-400' : 'text-gray-500';
+  const sidebarItemHover = isDark ? 'hover:bg-white/5 hover:text-white' : 'hover:bg-gray-50 hover:text-gray-900';
+  const sidebarItemActive = isDark ? 'bg-orange-500/10 text-orange-500' : 'bg-orange-50 text-orange-600';
+  const sidebarSecondaryText = isDark ? 'text-gray-500' : 'text-gray-400';
+  const dividerColor = isDark ? 'border-white/5' : 'border-gray-100';
 
   const navItems = [
     { id: 'home', label: 'Home', icon: Home, action: () => onNavigate('home') },
@@ -85,140 +86,147 @@ const Sidebar: React.FC<SidebarProps> = ({
   };
 
   return (
-    <aside className={`w-[260px] min-w-[260px] h-full flex flex-col z-40 hidden md:flex transition-all duration-500 border-r overflow-y-auto overflow-x-hidden ${sidebarBg} ${sidebarText} ${dividerColor}`}>
+    <aside className={`w-[280px] min-w-[280px] h-full flex flex-col z-40 hidden md:flex transition-all duration-300 border-r overflow-y-auto overflow-x-hidden ${sidebarBg} ${sidebarBorder} ${sidebarText}`}>
 
       {/* ─── App Logo ─── */}
-      <div className="px-7 pt-7 pb-5 flex-shrink-0">
-        <div className="flex items-center gap-3.5">
-          <div className={`p-2 rounded-2xl ${isDark ? 'bg-black' : 'bg-white'}`}>
-            <BookOpen size={20} className={isDark ? 'text-white' : 'text-black'} strokeWidth={2.5} />
+      <div className="p-8 flex-shrink-0">
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 bg-orange-500 rounded-xl text-white shadow-lg shadow-orange-500/20">
+            <BookOpen size={24} strokeWidth={2.5} />
           </div>
-          <div className="flex flex-col">
-            <span className="text-base font-bold tracking-tight leading-tight">Library</span>
-            <span className={`text-[10px] font-black uppercase tracking-[0.15em] ${sidebarSecondaryText}`}>System</span>
+          <div>
+            <h1 className={`text-lg font-bold tracking-tight ${isDark ? 'text-white' : 'text-gray-900'}`}>
+              Library
+            </h1>
+            <p className="text-[10px] font-black uppercase tracking-widest text-orange-500/80">
+              System
+            </p>
           </div>
         </div>
       </div>
 
       {/* ─── Navigate Section ─── */}
-      <div className="px-5 pt-2 pb-2 flex-shrink-0">
-        <p className={`px-4 text-[10px] font-black uppercase tracking-[0.2em] mb-3 ${sidebarSecondaryText}`}>
-          Navigate
-        </p>
-        <div className="space-y-1">
-          {navItems.map((item) => {
-            const isActive = getIsNavActive(item.id);
-            return (
-              <button
-                key={item.id}
-                onClick={item.action}
-                className={`w-full flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-200 text-[14px] font-semibold group
-                  ${isActive
-                    ? `${sidebarItemActive} shadow-lg`
-                    : `${sidebarText} ${sidebarItemHover} active:scale-[0.98]`
-                  }
-                `}
-              >
-                <item.icon size={20} strokeWidth={isActive ? 2.5 : 1.8} className={`transition-all duration-200 flex-shrink-0 ${!isActive ? 'group-hover:scale-110' : ''}`} />
-                <span>{item.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
+      <div className="px-4 space-y-8 overflow-y-auto no-scrollbar flex-1">
 
-      {/* ─── Categories Section ─── */}
-      <div className="flex-1 min-h-0 px-5 pt-4 pb-2">
-        <p className={`px-4 text-[10px] font-black uppercase tracking-[0.2em] mb-3 ${sidebarSecondaryText}`}>
-          Categories
-        </p>
-        <div className="space-y-1">
-          {categories.map((cat) => {
-            const isActive = getIsCategoryActive(cat.id);
-            return (
-              <button
-                key={cat.id}
-                onClick={() => { onNavigate('library'); onFilterChange(cat.id); }}
-                className={`w-full flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-200 text-[14px] font-semibold group
-                  ${isActive
-                    ? `${sidebarItemActive} shadow-lg`
-                    : `${sidebarText} ${sidebarItemHover} active:scale-[0.98]`
-                  }
-                `}
-              >
-                <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 transition-all duration-200 ${cat.color} ${isActive ? `ring-[3px] ${cat.activeRing} scale-110` : 'group-hover:scale-125'}`} />
-                <cat.icon size={20} strokeWidth={isActive ? 2.5 : 1.8} className={`transition-all duration-200 flex-shrink-0 ${!isActive ? 'group-hover:scale-110' : ''}`} />
-                <span>{cat.label}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* ─── Divider ─── */}
-      <div className={`mx-7 border-t flex-shrink-0 ${dividerColor}`} />
-
-      {/* ─── Bottom Actions ─── */}
-      <div className="px-5 py-5 space-y-1 flex-shrink-0 mt-auto">
-        {/* Theme Toggle */}
-        <button
-          onClick={onToggleTheme}
-          className={`w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-[14px] font-semibold transition-all duration-200 active:scale-[0.98] group ${sidebarText} ${sidebarItemHover}`}
-        >
-          <div className="relative w-5 h-5 flex-shrink-0">
-            <Sun size={20} strokeWidth={1.8} className={`absolute inset-0 transition-all duration-500 ${isDark ? 'opacity-0 rotate-90 scale-0' : 'opacity-100 rotate-0 scale-100'}`} />
-            <Moon size={20} strokeWidth={1.8} className={`absolute inset-0 transition-all duration-500 ${isDark ? 'opacity-100 rotate-0 scale-100' : 'opacity-0 -rotate-90 scale-0'}`} />
+        {/* Main Nav */}
+        <div>
+          <p className={`px-4 text-[11px] font-black uppercase tracking-widest mb-4 ${sidebarSecondaryText}`}>
+            Navigate
+          </p>
+          <div className="space-y-1">
+            {navItems.map((item) => {
+              const isActive = getIsNavActive(item.id);
+              return (
+                <button
+                  key={item.id}
+                  onClick={item.action}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all group
+                    ${isActive
+                      ? sidebarItemActive
+                      : `${sidebarText} ${sidebarItemHover}`
+                    }
+                  `}
+                >
+                  <item.icon size={20} className={isActive ? '' : 'group-hover:scale-110 transition-transform'} />
+                  <span>{item.label}</span>
+                </button>
+              );
+            })}
           </div>
-          <span>{isDark ? 'Dark Mode' : 'Light Mode'}</span>
-        </button>
+        </div>
 
-        {/* Admin Dashboard */}
-        {userProfile.role === 'admin' && (
+        {/* ─── Categories Section ─── */}
+        <div className="flex-1 min-h-0 px-5 pt-4 pb-2">
+          <p className={`px-4 text-[10px] font-black uppercase tracking-widest mb-4 ${sidebarSecondaryText}`}>
+            Categories
+          </p>
+          <div className="space-y-1">
+            {categories.map((cat) => {
+              const isActive = getIsCategoryActive(cat.id);
+              return (
+                <button
+                  key={cat.id}
+                  onClick={() => { onNavigate('library'); onFilterChange(cat.id); }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all group
+                  ${isActive
+                      ? sidebarItemActive
+                      : `${sidebarText} ${sidebarItemHover}`
+                    }
+                `}
+                >
+                  <div className={`w-2 h-2 rounded-full flex-shrink-0 transition-transform ${cat.color} ${isActive ? 'scale-125' : 'group-hover:scale-125'}`} />
+                  <span>{cat.label}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* ─── Divider ─── */}
+        <div className={`mx-7 border-t flex-shrink-0 ${dividerColor}`} />
+
+        {/* ─── Bottom Actions ─── */}
+        <div className="px-5 py-5 space-y-1 flex-shrink-0 mt-auto">
+          {/* Theme Toggle */}
           <button
-            onClick={onOpenAdmin}
-            className={`w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-[14px] font-bold transition-all duration-200 active:scale-[0.98] group border
-              ${isDark
-                ? 'bg-orange-500/10 text-orange-600 hover:bg-orange-500/15 border-orange-500/15'
-                : 'bg-orange-500/10 text-orange-400 hover:bg-orange-500/15 border-orange-500/10'
-              }`}
+            onClick={onToggleTheme}
+            className={`w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-[14px] font-semibold transition-all duration-200 active:scale-[0.98] group ${sidebarText} ${sidebarItemHover}`}
           >
-            <ShieldCheck size={20} strokeWidth={2} className="group-hover:rotate-12 transition-transform duration-300 flex-shrink-0" />
-            <span>Admin Panel</span>
+            <div className="relative w-5 h-5 flex-shrink-0">
+              <Sun size={20} strokeWidth={1.8} className={`absolute inset-0 transition-all duration-500 ${isDark ? 'opacity-0 rotate-90 scale-0' : 'opacity-100 rotate-0 scale-100'}`} />
+              <Moon size={20} strokeWidth={1.8} className={`absolute inset-0 transition-all duration-500 ${isDark ? 'opacity-100 rotate-0 scale-100' : 'opacity-0 -rotate-90 scale-0'}`} />
+            </div>
+            <span>{isDark ? 'Dark Mode' : 'Light Mode'}</span>
           </button>
-        )}
 
-        {/* Account Settings */}
-        <button
-          onClick={onOpenSettings}
-          className={`w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-[14px] font-semibold transition-all duration-200 active:scale-[0.98] group ${sidebarText} ${sidebarItemHover}`}
-        >
-          <Settings size={20} strokeWidth={1.8} className="group-hover:rotate-90 transition-transform duration-500 flex-shrink-0" />
-          <span>Account Settings</span>
-        </button>
-
-        {/* Sign Out */}
-        <button
-          onClick={async () => {
-            if (isLoggingOut) return;
-            setIsLoggingOut(true);
-            try {
-              await onLogout();
-            } catch (error) {
-              console.error('[SIDEBAR] Error during logout:', error);
-              setIsLoggingOut(false);
-            }
-          }}
-          disabled={isLoggingOut}
-          className={`w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-[14px] font-bold transition-all duration-200 active:scale-[0.98] group text-red-500 disabled:opacity-50
-            ${isDark ? 'hover:bg-red-50' : 'hover:bg-red-500/10'}`}
-        >
-          {isLoggingOut ? (
-            <Loader2 size={20} className="animate-spin flex-shrink-0" />
-          ) : (
-            <LogOut size={20} strokeWidth={2} className="group-hover:-translate-x-0.5 transition-transform duration-200 flex-shrink-0" />
+          {/* Admin Dashboard */}
+          {userProfile.role === 'admin' && (
+            <button
+              onClick={onOpenAdmin}
+              className={`w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-[14px] font-bold transition-all duration-200 active:scale-[0.98] group border
+              ${isDark
+                  ? 'bg-orange-500/10 text-orange-600 hover:bg-orange-500/15 border-orange-500/15'
+                  : 'bg-orange-500/10 text-orange-400 hover:bg-orange-500/15 border-orange-500/10'
+                }`}
+            >
+              <ShieldCheck size={20} strokeWidth={2} className="group-hover:rotate-12 transition-transform duration-300 flex-shrink-0" />
+              <span>Admin Panel</span>
+            </button>
           )}
-          <span>{isLoggingOut ? 'Signing Out...' : 'Sign Out'}</span>
-        </button>
+
+          {/* Account Settings */}
+          <button
+            onClick={onOpenSettings}
+            className={`w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-[14px] font-semibold transition-all duration-200 active:scale-[0.98] group ${sidebarText} ${sidebarItemHover}`}
+          >
+            <Settings size={20} strokeWidth={1.8} className="group-hover:rotate-90 transition-transform duration-500 flex-shrink-0" />
+            <span>Account Settings</span>
+          </button>
+
+          {/* Sign Out */}
+          <button
+            onClick={async () => {
+              if (isLoggingOut) return;
+              setIsLoggingOut(true);
+              try {
+                await onLogout();
+              } catch (error) {
+                console.error('[SIDEBAR] Error during logout:', error);
+                setIsLoggingOut(false);
+              }
+            }}
+            disabled={isLoggingOut}
+            className={`w-full flex items-center gap-4 px-4 py-3 rounded-2xl text-[14px] font-bold transition-all duration-200 active:scale-[0.98] group text-red-500 disabled:opacity-50
+            ${isDark ? 'hover:bg-red-50' : 'hover:bg-red-500/10'}`}
+          >
+            {isLoggingOut ? (
+              <Loader2 size={20} className="animate-spin flex-shrink-0" />
+            ) : (
+              <LogOut size={20} strokeWidth={2} className="group-hover:-translate-x-0.5 transition-transform duration-200 flex-shrink-0" />
+            )}
+            <span>{isLoggingOut ? 'Signing Out...' : 'Sign Out'}</span>
+          </button>
+        </div>
       </div>
     </aside>
   );

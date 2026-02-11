@@ -12,6 +12,7 @@ interface HeaderProps {
   isAuthenticated: boolean;
   userProfile: UserProfile | null;
   onAuth: () => void;
+  hasSidebar?: boolean;
 }
 
 const Header: React.FC<HeaderProps> = ({
@@ -22,7 +23,8 @@ const Header: React.FC<HeaderProps> = ({
   fileName,
   isAuthenticated,
   userProfile,
-  onAuth
+  onAuth,
+  hasSidebar = false
 }) => {
   const isDark = theme === 'dark';
   const isDashboardView = ['home', 'library', 'upload', 'reader'].includes(view);
@@ -35,30 +37,45 @@ const Header: React.FC<HeaderProps> = ({
 
   const photoSrc = userProfile?.photoUrl || userProfile?.photo_url || '';
 
-  return (
-    <header className={`fixed top-0 left-0 right-0 h-14 border-b z-50 transition-all duration-500 ${isDark ? 'bg-black/40 backdrop-blur-2xl border-white/5' : 'bg-white/90 backdrop-blur-xl border-gray-100'}`}>
-      <div className="flex items-center justify-between px-6 h-full">
-        {/* Logo Section */}
-        <div className="flex items-center gap-3 min-w-[200px]">
-          <div
-            onClick={() => onNavigate('landing')}
-            className="flex items-center gap-3 cursor-pointer group"
-          >
-            <div className={`p-1.5 rounded-xl transition-all duration-300 group-hover:scale-110 group-active:scale-95 ${isDark ? 'bg-white text-black' : 'bg-black text-white'}`}>
-              <img src="/logo.png" alt="Logo" className={`w-5 h-5 object-contain ${isDark ? 'brightness-0' : 'brightness-0 invert'}`} />
-            </div>
-            <span className={`font-bold tracking-tight text-base hidden sm:block transition-colors duration-300 ${isDark ? 'text-white' : 'text-gray-900'}`}>
-              Library System
-            </span>
-          </div>
+  // Calculate positioning class based on whether sidebar is active
+  // If sidebar is present, header is relative (in flex col). If not, full width fixed.
+  // Actually in App.tsx we placed it in flex column, so relative/w-full is fine.
+  // But strictly, let's keep it sticky top-0 for content scroll.
 
-          {view === 'reader' && fileName && (
-            <div className="flex items-center gap-2 animate-in slide-in-from-left-4 fade-in duration-500">
-              <span className="text-gray-400 text-lg font-light">/</span>
-              <span className={`text-sm font-medium truncate max-w-[200px] ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{fileName}</span>
+  const positionClass = hasSidebar
+    ? 'sticky top-0 w-full'
+    : 'fixed top-0 left-0 right-0';
+
+  return (
+    <header className={`${positionClass} h-14 border-b z-30 transition-all duration-500 ${isDark ? 'bg-black/40 backdrop-blur-2xl border-white/5' : 'bg-white/90 backdrop-blur-xl border-gray-100'}`}>
+      <div className="flex items-center justify-between px-6 h-full">
+        {/* Logo Section - Hidden if sidebar is present */}
+        {!hasSidebar ? (
+          <div className="flex items-center gap-3 min-w-[200px]">
+            <div
+              onClick={() => onNavigate('landing')}
+              className="flex items-center gap-3 cursor-pointer group"
+            >
+              <div className={`p-1.5 rounded-xl transition-all duration-300 group-hover:scale-110 group-active:scale-95 ${isDark ? 'bg-white text-black' : 'bg-black text-white'}`}>
+                <img src="/logo.png" alt="Logo" className={`w-5 h-5 object-contain ${isDark ? 'brightness-0' : 'brightness-0 invert'}`} />
+              </div>
+              <span className={`font-bold tracking-tight text-base hidden sm:block transition-colors duration-300 ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                Library System
+              </span>
             </div>
-          )}
-        </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 animate-in slide-in-from-left-4 fade-in duration-500">
+            {/* If reading a file, show filename breadcrumb here */}
+            {view === 'reader' && fileName && (
+              <>
+                <span className={`font-bold text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Reading</span>
+                <span className="text-gray-400 text-lg font-light">/</span>
+                <span className={`text-sm font-medium truncate max-w-[200px] ${isDark ? 'text-white' : 'text-gray-900'}`}>{fileName}</span>
+              </>
+            )}
+          </div>
+        )}
 
         {/* Global Navigation - only on public pages */}
         {!isDashboardView && (
