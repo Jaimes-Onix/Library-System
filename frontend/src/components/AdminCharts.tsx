@@ -91,12 +91,12 @@ export const BarChart: React.FC<ChartProps> = ({ theme }) => {
 };
 
 export const DonutChart: React.FC<ChartProps> = ({ theme }) => {
-    // Categories: Professional, Academic, Personal, Creative
+    // Categories: Philippines, Internal, International, PH Interns
     const segments = [
-        { label: 'Professional', value: 35, color: '#F97316' }, // Orange
-        { label: 'Academic', value: 45, color: '#EA580C' },     // Dark Orange
-        { label: 'Personal', value: 15, color: '#FB923C' },     // Light Orange
-        { label: 'Creative', value: 5, color: '#FDBA74' },      // Pale Orange
+        { label: 'Philippines', value: 35, color: '#3B82F6' },     // Blue
+        { label: 'Internal', value: 45, color: '#A855F7' },        // Purple
+        { label: 'International', value: 15, color: '#22C55E' },   // Green
+        { label: 'PH Interns', value: 5, color: '#F97316' },       // Orange
     ];
 
     const total = segments.reduce((sum, s) => sum + s.value, 0);

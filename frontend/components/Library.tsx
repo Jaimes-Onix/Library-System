@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Plus, Trash2, X, Check, Heart } from 'lucide-react';
-import { LibraryBook, LibraryFilter } from '../types';
+import { LibraryBook } from '../types';
+import type { LibraryFilter } from './Sidebar';
 
 const SECTION_TITLES: Record<LibraryFilter, string> = {
   all: 'Your Library',

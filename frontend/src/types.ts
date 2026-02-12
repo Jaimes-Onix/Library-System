@@ -19,12 +19,19 @@ export interface PDFPageViewport {
   scale: number;
 }
 
-export type Category = 'Professional' | 'Academic' | 'Personal' | 'Creative' | 'Uncategorized';
+export type Category = 'philippines' | 'internal' | 'international' | 'ph_interns' | 'Uncategorized';
+
+// BookCategory matches the database column type
+export type BookCategory = 'philippines' | 'internal' | 'international' | 'ph_interns';
+
+// LibraryFilter used by Sidebar and Library components
+export type LibraryFilter = 'all' | 'favorites' | 'philippines' | 'internal' | 'international' | 'ph_interns';
 
 export interface LibraryBook {
   id: string;
   name: string;
   doc: any;
+  pdfUrl?: string;
   coverUrl: string;
   totalPages: number;
   summary?: string;

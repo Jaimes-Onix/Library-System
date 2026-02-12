@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { Briefcase, GraduationCap, User, Palette, Check } from 'lucide-react';
+import { MapPin, Building, Globe, Users, Check } from 'lucide-react';
 import { Category, Theme } from '../types';
 
 interface CategorySelectionModalProps {
@@ -23,10 +23,10 @@ const CategorySelectionModal: React.FC<CategorySelectionModalProps> = ({
   const isDark = theme === 'dark';
 
   const categories: { id: Category; label: string; icon: any; color: string; bgColor: string }[] = [
-    { id: 'Professional', label: 'Professional', icon: Briefcase, color: 'text-blue-500', bgColor: 'bg-blue-500/10' },
-    { id: 'Academic', label: 'Academic', icon: GraduationCap, color: 'text-purple-500', bgColor: 'bg-purple-500/10' },
-    { id: 'Personal', label: 'Personal', icon: User, color: 'text-orange-500', bgColor: 'bg-orange-500/10' },
-    { id: 'Creative', label: 'Creative', icon: Palette, color: 'text-pink-500', bgColor: 'bg-pink-500/10' },
+    { id: 'philippines', label: 'Philippines', icon: MapPin, color: 'text-blue-500', bgColor: 'bg-blue-500/10' },
+    { id: 'internal', label: 'Internal', icon: Building, color: 'text-purple-500', bgColor: 'bg-purple-500/10' },
+    { id: 'international', label: 'International', icon: Globe, color: 'text-green-500', bgColor: 'bg-green-500/10' },
+    { id: 'ph_interns', label: 'PH Interns', icon: Users, color: 'text-orange-500', bgColor: 'bg-orange-500/10' },
   ];
 
   return (

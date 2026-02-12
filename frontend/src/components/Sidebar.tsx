@@ -5,10 +5,10 @@ import {
   Heart,
   Settings,
   LogOut,
-  Briefcase,
-  GraduationCap,
-  User,
-  Palette,
+  MapPin,
+  Building,
+  Globe,
+  Users,
   Moon,
   Sun,
   ShieldCheck,
@@ -64,10 +64,10 @@ const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   const categories = [
-    { id: 'Professional', label: 'Professional', icon: Briefcase, color: 'bg-blue-500', activeRing: 'ring-blue-400/40' },
-    { id: 'Academic', label: 'Academic', icon: GraduationCap, color: 'bg-purple-500', activeRing: 'ring-purple-400/40' },
-    { id: 'Personal', label: 'Personal', icon: User, color: 'bg-orange-500', activeRing: 'ring-orange-400/40' },
-    { id: 'Creative', label: 'Creative', icon: Palette, color: 'bg-pink-500', activeRing: 'ring-pink-400/40' },
+    { id: 'philippines', label: 'Philippines', icon: MapPin, color: 'bg-blue-500', activeRing: 'ring-blue-400/40' },
+    { id: 'internal', label: 'Internal', icon: Building, color: 'bg-purple-500', activeRing: 'ring-purple-400/40' },
+    { id: 'international', label: 'International', icon: Globe, color: 'bg-green-500', activeRing: 'ring-green-400/40' },
+    { id: 'ph_interns', label: 'PH Interns', icon: Users, color: 'bg-orange-500', activeRing: 'ring-orange-400/40' },
   ];
 
   // Helper to check active state

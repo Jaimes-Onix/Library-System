@@ -1,24 +1,20 @@
 
-import React, { useState, useRef, useEffect, useMemo, ErrorInfo, ReactNode } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo, ErrorInfo, ReactNode } from 'react';
 import { Routes, Route, Navigate, useNavigate, useLocation, Outlet } from 'react-router-dom';
-import { GoogleGenAI } from "@google/genai";
+import * as pdfjsLib from 'pdfjs-dist';
 import { BookOpen, RefreshCw, AlertCircle, Loader2 } from 'lucide-react';
 import Header from './components/Header';
 import Upload from './components/Upload';
 import BookViewer from './components/BookViewer';
-import Controls from './components/Controls';
-import Library from './components/Library';
 import LibraryPage from './components/LibraryPage';
 import Sidebar from './components/Sidebar';
 import LibraryActionModal from './components/LibraryActionModal';
-import CategorySelectionModal from './components/CategorySelectionModal';
-import FeaturedCarousel from './components/FeaturedCarousel';
 import AccountSettingsModal from './components/AccountSettingsModal';
 import Auth from './components/Auth';
 import DashboardHome from './components/DashboardHome';
 import ExamplesPage from './components/ExamplesPage';
 import FeaturesPage from './components/FeaturesPage';
-import { BookRef, LibraryBook, UserProfile, Category, Theme } from './types';
+import { BookRef, LibraryBook, UserProfile, Category, BookCategory, Theme } from './types';
 import { Toaster } from './utils/toast';
 import { useAuth } from './context/AuthContext';
 import AdminDashboard from './components/AdminDashboard';
@@ -26,6 +22,46 @@ import AdminAuth from './components/AdminAuth';
 import VantaFog from './components/VantaFog';
 import Landing from './components/Landing';
 import Home from './components/Home';
+import {
+  uploadPDF,
+  uploadCover,
+  saveBookMetadata,
+  loadBooks,
+  updateBook,
+  deleteBook,
+  StoredBook
+} from './services/bookStorage';
+
+// Configure PDF.js worker — use Vite ?url import for reliable version matching
+import pdfjsWorkerUrl from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+pdfjsLib.GlobalWorkerOptions.workerSrc = pdfjsWorkerUrl;
+
+// --- Helper: Generate cover image from first page of PDF ---
+async function generateCoverFromPDF(pdfDoc: any): Promise<string> {
+  const page = await pdfDoc.getPage(1);
+  const viewport = page.getViewport({ scale: 1.5 });
+  const canvas = document.createElement('canvas');
+  canvas.width = viewport.width;
+  canvas.height = viewport.height;
+  const ctx = canvas.getContext('2d')!;
+  await page.render({ canvasContext: ctx, viewport }).promise;
+  return canvas.toDataURL('image/jpeg', 0.85);
+}
+
+// --- Helper: Convert StoredBook (DB) → LibraryBook (UI) ---
+function storedToLibraryBook(stored: StoredBook): LibraryBook {
+  return {
+    id: stored.id,
+    name: stored.title || stored.original_filename,
+    doc: null, // Lazy-loaded when reader opens
+    pdfUrl: stored.pdf_url,
+    coverUrl: stored.cover_url || '',
+    totalPages: stored.total_pages,
+    summary: stored.summary || undefined,
+    category: (stored.category as Category) || undefined,
+    isFavorite: stored.is_favorite,
+  };
+}
 
 // --- Error Boundary ---
 interface EBProps { children?: ReactNode }
@@ -123,15 +159,17 @@ const App: React.FC = () => {
   const [theme, setTheme] = useState<Theme>('dark');
   const navigate = useNavigate();
 
-  // State lifted from FlipBookAppContent
+  // State
   const [books, setBooks] = useState<LibraryBook[]>([]);
   const [selectedBook, setSelectedBook] = useState<LibraryBook | null>(null);
   const [pendingBook, setPendingBook] = useState<LibraryBook | null>(null);
   const [readerMode, setReaderMode] = useState<'manual' | 'preview'>('manual');
   const [currentPage, setCurrentPage] = useState(0);
-  const [zoomLevel, setZoomLevel] = useState(1);
   const [isSummarizing, setIsSummarizing] = useState(false);
   const [isAccountSettingsOpen, setIsAccountSettingsOpen] = useState(false);
+  const [uploadLoading, setUploadLoading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState('');
+  const [isLoadingBook, setIsLoadingBook] = useState(false);
 
   const bookRef = useRef<BookRef | null>(null);
 
@@ -154,15 +192,187 @@ const App: React.FC = () => {
     return null;
   }, [user, profile]);
 
-  const handleAuthSuccess = (newProfile: UserProfile) => {
-    navigate('/home');
-  };
+  // ─── Load books from Supabase on login ───
+  useEffect(() => {
+    if (!user) {
+      setBooks([]);
+      return;
+    }
+    let cancelled = false;
+    const fetchBooks = async () => {
+      try {
+        const stored = await loadBooks();
+        if (!cancelled) {
+          setBooks(stored.map(storedToLibraryBook));
+        }
+      } catch (err) {
+        console.error('Failed to load books:', err);
+      }
+    };
+    fetchBooks();
+    return () => { cancelled = true; };
+  }, [user]);
 
-  const openReader = (book: LibraryBook, mode: 'manual' | 'preview' = 'manual') => {
-    setSelectedBook(book);
+  // ─── Upload handler: PDF → parse → cover → Supabase ───
+  const handleFilesSelect = useCallback(async (files: File[]) => {
+    if (files.length === 0) return;
+    setUploadLoading(true);
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      try {
+        setUploadStatus(`Parsing "${file.name}" (${i + 1}/${files.length})...`);
+
+        // 1. Parse PDF locally to get page count & cover
+        const arrayBuffer = await file.arrayBuffer();
+        const pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+        const totalPages = pdfDoc.numPages;
+
+        setUploadStatus(`Generating cover for "${file.name}"...`);
+
+        // 2. Generate cover image from first page
+        const coverBase64 = await generateCoverFromPDF(pdfDoc);
+
+        setUploadStatus(`Uploading "${file.name}" to storage...`);
+
+        // 3. Upload PDF file to Supabase Storage
+        const pdfUrl = await uploadPDF(file);
+
+        // 4. Upload cover image to Supabase Storage
+        const tempId = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        const coverUrl = await uploadCover(coverBase64, tempId);
+
+        setUploadStatus(`Saving "${file.name}" to library...`);
+
+        // 5. Save metadata to database
+        const stored = await saveBookMetadata({
+          title: file.name.replace('.pdf', ''),
+          original_filename: file.name,
+          pdf_url: pdfUrl,
+          cover_url: coverUrl,
+          total_pages: totalPages,
+          file_size: file.size,
+        });
+
+        // 6. Add to local state (doc already parsed so keep it)
+        const newBook: LibraryBook = {
+          id: stored.id,
+          name: stored.title || file.name,
+          doc: pdfDoc,
+          pdfUrl: stored.pdf_url,
+          coverUrl: stored.cover_url || coverBase64,
+          totalPages: totalPages,
+          category: undefined,
+          isFavorite: false,
+        };
+        setBooks(prev => [newBook, ...prev]);
+
+      } catch (err: any) {
+        console.error(`Upload failed for ${file.name}:`, err);
+        alert(`Failed to upload "${file.name}": ${err.message}`);
+      }
+    }
+
+    setUploadLoading(false);
+    setUploadStatus('');
+    navigate('/library');
+  }, [navigate]);
+
+  // ─── Open reader: lazy-load PDF doc if needed ───
+  const openReader = useCallback(async (book: LibraryBook, mode: 'manual' | 'preview' = 'manual') => {
     setReaderMode(mode);
     setCurrentPage(0);
-    navigate(`/reader/${book.id}`);
+
+    if (book.doc) {
+      // Already parsed — open immediately
+      setSelectedBook(book);
+      navigate(`/reader/${book.id}`);
+      return;
+    }
+
+    // Need to fetch and parse the PDF from its URL
+    if (!book.pdfUrl) {
+      alert('No PDF URL available for this book.');
+      return;
+    }
+
+    setIsLoadingBook(true);
+    try {
+      const response = await fetch(book.pdfUrl);
+      const arrayBuffer = await response.arrayBuffer();
+      const pdfDoc = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+
+      // Update the book in state with the parsed doc
+      const updatedBook = { ...book, doc: pdfDoc };
+      setBooks(prev => prev.map(b => b.id === book.id ? updatedBook : b));
+      setSelectedBook(updatedBook);
+      setPendingBook(null);
+      navigate(`/reader/${book.id}`);
+    } catch (err: any) {
+      console.error('Failed to load PDF:', err);
+      alert(`Failed to load book: ${err.message}`);
+    } finally {
+      setIsLoadingBook(false);
+    }
+  }, [navigate]);
+
+  // ─── Delete book via Supabase ───
+  const handleRemoveBook = useCallback(async (id: string) => {
+    const book = books.find(b => b.id === id);
+    if (!book) return;
+
+    try {
+      await deleteBook(id, book.pdfUrl || '', book.coverUrl);
+      setBooks(prev => prev.filter(b => b.id !== id));
+      setPendingBook(null);
+    } catch (err: any) {
+      console.error('Delete failed:', err);
+      // Still remove locally even if Supabase fails
+      setBooks(prev => prev.filter(b => b.id !== id));
+      setPendingBook(null);
+    }
+  }, [books]);
+
+  // ─── Toggle favorite via Supabase ───
+  const handleToggleFavorite = useCallback(async (id: string) => {
+    const book = books.find(b => b.id === id);
+    if (!book) return;
+
+    const newFav = !book.isFavorite;
+    // Optimistic update
+    setBooks(prev => prev.map(b => b.id === id ? { ...b, isFavorite: newFav } : b));
+
+    try {
+      await updateBook(id, { is_favorite: newFav });
+    } catch (err) {
+      console.error('Toggle favorite failed:', err);
+      // Revert on failure
+      setBooks(prev => prev.map(b => b.id === id ? { ...b, isFavorite: !newFav } : b));
+    }
+  }, [books]);
+
+  // ─── Apply summary via Supabase ───
+  const handleApplySummary = useCallback(async (id: string, summary: string) => {
+    setBooks(prev => prev.map(b => b.id === id ? { ...b, summary } : b));
+    try {
+      await updateBook(id, { summary });
+    } catch (err) {
+      console.error('Apply summary failed:', err);
+    }
+  }, []);
+
+  // ─── Update category via Supabase ───
+  const handleUpdateCategory = useCallback(async (id: string, category?: BookCategory) => {
+    setBooks(prev => prev.map(b => b.id === id ? { ...b, category } : b));
+    try {
+      await updateBook(id, { category: category || null });
+    } catch (err) {
+      console.error('Update category failed:', err);
+    }
+  }, []);
+
+  const handleAuthSuccess = (newProfile: UserProfile) => {
+    navigate('/home');
   };
 
   if (loading) return <div className="flex h-screen items-center justify-center bg-black text-white"><Loader2 className="animate-spin" /></div>;
@@ -207,23 +417,19 @@ const App: React.FC = () => {
               books={books}
               onSelectBook={(book) => setPendingBook(book)}
               onAddNew={() => navigate('/upload')}
-              onRemoveBook={(id) => setBooks(b => b.filter(x => x.id !== id))}
-              onToggleFavorite={(id) => setBooks(b => b.map(x => x.id === id ? { ...x, isFavorite: !x.isFavorite } : x))}
+              onRemoveBook={handleRemoveBook}
+              onToggleFavorite={handleToggleFavorite}
             /> : <Navigate to="/login" />
           } />
 
           <Route path="/upload" element={
-            user ? <Upload theme={theme} onFilesSelect={(files) => alert("Upload logic here")} onBack={() => navigate('/library')} isLoading={false} statusMessage="" />
+            user ? <Upload darkMode={theme === 'dark'} onFilesSelect={handleFilesSelect} onBack={() => navigate('/library')} isLoading={uploadLoading} statusMessage={uploadStatus} />
               : <Navigate to="/login" />
           } />
 
           <Route path="/reader/:bookId" element={
             selectedBook ? (
               <div className={`fixed inset-0 z-[60] animate-in fade-in duration-700 ${theme === 'dark' ? 'bg-[#0a0a0a]' : 'bg-white'}`}>
-                {/* Reader UI - could be extracted to ReaderPage */}
-                <div className={`fixed top-0 left-0 w-full h-[3px] z-[100] ${theme === 'dark' ? 'bg-zinc-900' : 'bg-gray-100'}`}>
-                  <div className={`h-full transition-all duration-700 ${theme === 'dark' ? 'bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.6)]' : 'bg-black'}`} style={{ width: `${((currentPage + 1) / (selectedBook.totalPages || 1)) * 100}%` }} />
-                </div>
                 <button onClick={() => { navigate('/library'); setSelectedBook(null); }}
                   className={`fixed top-8 left-8 z-[110] p-4 backdrop-blur-md border transition-all shadow-2xl rounded-full ${theme === 'dark' ? 'bg-white/10 border-white/10 text-white hover:bg-white hover:text-black' : 'bg-black/5 border-black/5 text-black hover:bg-black hover:text-white'}`}>
                   <BookOpen size={24} />
@@ -232,19 +438,7 @@ const App: React.FC = () => {
                   pdfDocument={selectedBook.doc}
                   onFlip={setCurrentPage}
                   onBookInit={(b) => { if (b) bookRef.current = { pageFlip: () => b.pageFlip() }; }}
-                  mode={readerMode}
-                  zoomLevel={zoomLevel}
-                  onZoomChange={setZoomLevel}
-                  theme={theme}
-                />
-                <Controls
-                  theme={theme}
-                  currentPage={currentPage}
-                  totalPages={selectedBook.totalPages || 1}
-                  zoomLevel={zoomLevel}
-                  onZoomChange={setZoomLevel}
-                  onNext={() => bookRef.current?.pageFlip()?.flipNext()}
-                  onPrev={() => bookRef.current?.pageFlip()?.flipPrev()}
+                  autoPlay={readerMode === 'preview'}
                 />
               </div>
             ) : <Navigate to="/library" />
@@ -260,15 +454,15 @@ const App: React.FC = () => {
       </AppLayout>
 
       <LibraryActionModal
-        theme={theme}
         book={pendingBook}
         onClose={() => setPendingBook(null)}
-        onSelectMode={(m) => { if (pendingBook) openReader(pendingBook, m); setPendingBook(null); }}
-        onSummarize={() => Promise.resolve("Summary")}
-        onApplySummary={(id, s) => setBooks(b => b.map(x => x.id === id ? { ...x, summary: s } : x))}
+        onSelectMode={(m) => { if (pendingBook) openReader(pendingBook, m); }}
+        onApplySummary={handleApplySummary}
+        onUpdateCategory={handleUpdateCategory}
         isSummarizing={isSummarizing}
-        onRemove={(id) => setBooks(b => b.filter(x => x.id !== id))}
-        onToggleFavorite={(id) => setBooks(b => b.map(x => x.id === id ? { ...x, isFavorite: !x.isFavorite } : x))}
+        isLoadingBook={isLoadingBook}
+        onRemove={handleRemoveBook}
+        onToggleFavorite={handleToggleFavorite}
       />
 
       {derivedProfile && <AccountSettingsModal isOpen={isAccountSettingsOpen} onClose={() => setIsAccountSettingsOpen(false)} userProfile={derivedProfile} onSave={() => setIsAccountSettingsOpen(false)} theme={theme} onLogout={signOut} />}

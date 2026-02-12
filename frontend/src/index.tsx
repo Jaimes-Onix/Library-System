@@ -10,7 +10,7 @@ import * as pdfjsLib from 'pdfjs-dist';
 try {
   if (typeof window !== 'undefined' && pdfjsLib) {
     // Standardize worker source to the exact esm.sh version for consistency
-    const PDFJS_VERSION = '4.4.168';
+    const PDFJS_VERSION = '4.10.38';
     // Using esm.sh build path for the worker
     pdfjsLib.GlobalWorkerOptions.workerSrc = `https://esm.sh/pdfjs-dist@${PDFJS_VERSION}/build/pdf.worker.mjs`;
   }
